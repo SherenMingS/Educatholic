@@ -60,6 +60,7 @@ use App\Http\Controllers\QuizController;
 Route::middleware(['auth:sanctum', 'role:siswa'])->group(function () {
     Route::get('/quizzes/student', [QuizController::class, 'getQuizzesForStudents']);
     Route::get('/quizzes/{id}/student', [QuizController::class, 'getQuizForStudent']);
+    Route::post('/quizzes/submit', [QuizController::class, 'submitQuizAnswer']);
 });
 
 Route::middleware('auth:sanctum')->group(function () {

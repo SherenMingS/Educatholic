@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/screen/isiquiz_siswa.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/quiz.dart';
 import '../services/api_service.dart';
@@ -92,8 +93,12 @@ class _StudentQuizListPageState extends State<StudentQuizListPage> {
                         ),
                         trailing: Icon(Icons.arrow_forward_ios, size: 18),
                         onTap: () {
-                          // Arahkan ke halaman detail kuis
-                          Navigator.pushNamed(context, '/quiz/${quiz.id}');
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => QuizPage(quizId: quiz.id),
+                            ),
+                          );
                         },
                       ),
                     );

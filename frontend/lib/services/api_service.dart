@@ -111,7 +111,11 @@ class ApiService {
 
 //student get quiz
   static Future<List<Quiz>> getQuizzesForStudents(
-      String token, String kelas) async {
+      String token, String? kelas) async {
+    if (kelas == null || kelas.isEmpty) {
+      throw Exception("⚠️ Gagal mengambil kuis: kelas tidak valid!");
+    }
+
     final response = await http.get(
       Uri.parse('$baseUrl/quizzes/student?kelas=$kelas'), // Kirim kelas ke API
       headers: {
@@ -120,11 +124,18 @@ class ApiService {
       },
     );
 
+    print("Response Code: ${response.statusCode}");
+    print("Response Body: ${response.body}");
+
     if (response.statusCode == 200) {
-      List<dynamic> data = jsonDecode(response.body)['data'];
-      return data.map((quiz) => Quiz.fromJson(quiz)).toList();
+      try {
+        List<dynamic> data = jsonDecode(response.body)['data'];
+        return data.map((quiz) => Quiz.fromJson(quiz)).toList();
+      } catch (e) {
+        throw Exception("⚠️ Format data API tidak sesuai: $e");
+      }
     } else {
-      throw Exception('Gagal mengambil daftar kuis untuk kelas $kelas');
+      throw Exception('⚠️ Gagal mengambil daftar kuis untuk kelas $kelas');
     }
   }
 
@@ -170,6 +181,33 @@ class ApiService {
       return jsonDecode(response.body);
     } else {
       throw Exception('Gagal mengambil detail materi');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getQuizDetailSiswa(
+      String token, int quizId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/quizzes/$quizId/student'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+      },
+    );
+
+    print("Response Code: ${response.statusCode}");
+    print("Response Body: ${response.body}");
+
+    if (response.statusCode == 200) {
+      Map<String, dynamic> jsonResponse = jsonDecode(response.body);
+
+      // **Pastikan kita hanya mengambil bagian 'data'**
+      if (jsonResponse.containsKey('data') && jsonResponse['data'] is Map) {
+        return jsonResponse['data'];
+      } else {
+        throw Exception("⚠️ Format data API tidak sesuai: $jsonResponse");
+      }
+    } else {
+      throw Exception('⚠️ Gagal mengambil detail kuis');
     }
   }
 }
