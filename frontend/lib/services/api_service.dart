@@ -210,4 +210,24 @@ class ApiService {
       throw Exception('⚠️ Gagal mengambil detail kuis');
     }
   }
+
+//siswa submit quiz
+  static Future<Map<String, dynamic>> submitQuiz(
+      String token, int quizId, List<Map<String, dynamic>> answers) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/quizzes/$quizId/submit'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({'answers': answers}),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception("⚠️ Gagal mengirim jawaban kuis: ${response.body}");
+    }
+  }
 }

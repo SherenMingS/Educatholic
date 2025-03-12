@@ -226,7 +226,9 @@ public function submitQuiz(Request $request, $id)
         'answers.*.selected_answer' => 'required|in:A,B,C,D',
     ]);
 
+    $user = $request->user(); // Ambil siswa yang login
     $quiz = Quiz::find($id);
+    
     if (!$quiz) {
         return response()->json(['message' => 'Quiz tidak ditemukan'], 404);
     }
@@ -234,6 +236,7 @@ public function submitQuiz(Request $request, $id)
     $correctAnswers = 0;
     $totalQuestions = count($request->answers);
 
+    // Cek jawaban siswa
     foreach ($request->answers as $answer) {
         $question = QuizQuestion::find($answer['question_id']);
         if ($question->correct_answer === $answer['selected_answer']) {
@@ -243,6 +246,15 @@ public function submitQuiz(Request $request, $id)
 
     $score = round(($correctAnswers / $totalQuestions) * 100, 2);
 
+    // **Simpan hasil ke database (tabel quiz_results)**
+    $quizResult = \App\Models\QuizResult::create([
+        'user_id' => $user->id,
+        'quiz_id' => $quiz->id,
+        'score' => $score,
+        'correct_answers' => $correctAnswers,
+        'total_questions' => $totalQuestions,
+    ]);
+
     return response()->json([
         'status' => 'success',
         'message' => 'Jawaban berhasil disimpan!',
@@ -251,6 +263,7 @@ public function submitQuiz(Request $request, $id)
         'total_questions' => $totalQuestions
     ]);
 }
+
 
 
 

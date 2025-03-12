@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'hasilquiz_siswa.dart'; // Import halaman hasil kuis
 
 class QuizPage extends StatefulWidget {
   final int quizId; // ID Kuis yang dipilih siswa
@@ -16,7 +17,6 @@ class _QuizPageState extends State<QuizPage> {
   bool isLoading = true;
   String? token;
   int currentQuestionIndex = 0;
-  String? selectedAnswer;
   List<String?> selectedAnswers = [];
 
   @override
@@ -48,6 +48,57 @@ class _QuizPageState extends State<QuizPage> {
     }
   }
 
+  void _submitQuiz() async {
+    if (selectedAnswers.contains(null)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("⚠️ Harap jawab semua pertanyaan!")),
+      );
+      return;
+    }
+
+    List<Map<String, dynamic>> answers = [];
+    for (int i = 0; i < selectedAnswers.length; i++) {
+      String selectedLetter =
+          ""; // Tambahkan variabel untuk menyimpan huruf jawaban
+
+      if (selectedAnswers[i] == quizData!['questions'][i]['option_1']) {
+        selectedLetter = "A";
+      } else if (selectedAnswers[i] == quizData!['questions'][i]['option_2']) {
+        selectedLetter = "B";
+      } else if (selectedAnswers[i] == quizData!['questions'][i]['option_3']) {
+        selectedLetter = "C";
+      } else if (selectedAnswers[i] == quizData!['questions'][i]['option_4']) {
+        selectedLetter = "D";
+      }
+
+      print(
+          "Mengirim Jawaban: Question ID: ${quizData!['questions'][i]['id']}, Answer: $selectedLetter");
+
+      answers.add({
+        "question_id": quizData!['questions'][i]['id'],
+        "selected_answer": selectedLetter, // 🔥 Kirim huruf jawaban, bukan teks
+      });
+    }
+
+    try {
+      var result = await ApiService.submitQuiz(token!, widget.quizId, answers);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => HasilKuisPage(
+            totalSoal: quizData!['questions'].length,
+            jawabanBenar: result['correct_answers'],
+            skor: result['score'],
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("⚠️ Gagal mengirim jawaban: $e")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
@@ -70,14 +121,14 @@ class _QuizPageState extends State<QuizPage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.blue,
-        title: Text(quizData!['title']), // Menampilkan judul kuis
+        title: Text(quizData!['title']),
       ),
       body: Padding(
         padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// **Timer & Progress Indicator**
+            /// **Progress Indicator**
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -116,7 +167,7 @@ class _QuizPageState extends State<QuizPage> {
             ),
             SizedBox(height: 10),
             Text(
-              currentQuestion['question'], // Menampilkan pertanyaan
+              currentQuestion['question'],
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
 
@@ -152,7 +203,7 @@ class _QuizPageState extends State<QuizPage> {
                           : Colors.white,
                     ),
                     child: Text(
-                      answer ?? "Pilihan tidak tersedia", // Pastikan tidak null
+                      answer ?? "Pilihan tidak tersedia",
                       style: TextStyle(fontSize: 16),
                     ),
                   ),
@@ -176,16 +227,19 @@ class _QuizPageState extends State<QuizPage> {
                       : null,
                   child: Text("Sebelumnya"),
                 ),
-                ElevatedButton(
-                  onPressed: currentQuestionIndex < questions.length - 1
-                      ? () {
+                currentQuestionIndex < questions.length - 1
+                    ? ElevatedButton(
+                        onPressed: () {
                           setState(() {
                             currentQuestionIndex++;
                           });
-                        }
-                      : null,
-                  child: Text("Selanjutnya"),
-                ),
+                        },
+                        child: Text("Selanjutnya"),
+                      )
+                    : ElevatedButton(
+                        onPressed: _submitQuiz,
+                        child: Text("Selesai"),
+                      ),
               ],
             ),
           ],

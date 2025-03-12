@@ -9,12 +9,13 @@ class QuizResult extends Model
 {
     use HasFactory;
 
-    protected $table = 'quiz_results'; // Pastikan sesuai dengan tabel di database
+    protected $table = 'quiz_results';
 
-    protected $fillable = ['user_id', 'score'];
-
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
+    protected $fillable = [
+        'user_id',        // ✅ Tambahkan kolom ini
+        'quiz_id',
+        'score',
+        'correct_answers',
+        'total_questions'
+    ];
 }
