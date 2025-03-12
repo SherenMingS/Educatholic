@@ -30,5 +30,14 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed', // Auto hash password
     ];
+
+
+
+    ///
+    public function quizResults()
+{
+    return $this->hasMany(QuizResult::class, 'user_id');
+}
+
 }
 

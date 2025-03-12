@@ -46,6 +46,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/students/{kelas}', [UserController::class, 'getStudentsByClass'])->middleware('role:guru');
 });
 
+Route::middleware(['auth:sanctum'])->get('/user/profile', [UserController::class, 'getUserProfile']);
+
 
 // **Materi Routes** (Hanya guru yang bisa menambah, mengedit, atau menghapus materi)
 Route::middleware('auth:sanctum')->group(function () {
@@ -71,6 +73,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/quizzes/{id}', [QuizController::class, 'updateQuiz'])->middleware('role:guru');
     Route::delete('/quizzes/{id}', [QuizController::class, 'deleteQuiz'])->middleware('role:guru'); // Hapus quiz
 });
+
+
+use App\Http\Controllers\LeaderboardController;
+
+
+Route::middleware(['auth:sanctum'])->get('/leaderboard/students', [LeaderboardController::class, 'getStudentLeaderboard']);
 
 
 

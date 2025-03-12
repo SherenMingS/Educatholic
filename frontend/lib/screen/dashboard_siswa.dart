@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'package:frontend/screen/leaderboard_siswa.dart';
 
 import 'quizlist_siswa.dart';
 import 'package:get/get.dart';
@@ -166,7 +166,17 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
               MaterialPageRoute(builder: (context) => StudentQuizListPage()),
             );
           }),
-          _featureButton(Icons.emoji_events, "Leaderboard", () {}),
+          _featureButton(Icons.emoji_events, "Leaderboard", () async {
+            SharedPreferences prefs = await SharedPreferences.getInstance();
+            String? token = prefs.getString('token');
+            if (token != null) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => LeaderboardScreen(token: token)),
+              );
+            }
+          }),
         ],
       ),
     );

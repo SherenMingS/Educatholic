@@ -6,6 +6,19 @@ use App\Models\User;
 
 class UserController extends Controller
 {
+    public function getUserProfile(Request $request)
+    {
+        return response()->json([
+            'id' => auth()->user()->id,
+            'name' => auth()->user()->name,
+            'email' => auth()->user()->email,
+            'kelas' => auth()->user()->kelas, // Kirim kelas user yang login
+            'role' => auth()->user()->role,
+        ]);
+    }
+
+
+
     public function getStudentsByClass($kelas)
     {
         $students = User::where('role', 'siswa')

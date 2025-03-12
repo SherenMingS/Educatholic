@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/student.dart';
 import '../models/quiz.dart';
+import '../models/leaderboard.dart';
 
 class ApiService {
   static const String baseUrl =
@@ -228,6 +229,52 @@ class ApiService {
       return jsonDecode(response.body);
     } else {
       throw Exception("⚠️ Gagal mengirim jawaban kuis: ${response.body}");
+    }
+  }
+
+  static Future<Map<String, dynamic>> fetchUserProfile(String token) async {
+    final response = await http.get(
+      Uri.parse("$baseUrl/user/profile"),
+      headers: {
+        'Authorization': 'Bearer $token', // Pastikan token disertakan
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception("Gagal mengambil data profil");
+    }
+  }
+
+  // Ambil leaderboard berdasarkan kelas siswa yang login
+  static Future<List<LeaderboardModel>> fetchLeaderboard(
+      String kelas, String token) async {
+    final url = "$baseUrl/leaderboard/students?kelas=$kelas";
+    print("Fetching from: $url");
+
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Authorization': 'Bearer $token', // Gunakan token yang benar
+        'Accept': 'application/json',
+      },
+    );
+
+    print("Response Code: ${response.statusCode}");
+    print("Response Body: ${response.body}");
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      List<dynamic> leaderboardJson = data['leaderboard'];
+
+      print("Parsed Leaderboard Data: $leaderboardJson");
+
+      return leaderboardJson
+          .map((json) => LeaderboardModel.fromJson(json))
+          .toList();
+    } else {
+      throw Exception("Failed to load leaderboard: ${response.statusCode}");
     }
   }
 }
