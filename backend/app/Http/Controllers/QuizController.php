@@ -8,6 +8,10 @@ use App\Models\QuizQuestion;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
+
+use App\Models\Badge;
+use App\Models\QuizResult;
+
 class QuizController extends Controller
 {
     public function createQuiz(Request $request)
@@ -218,6 +222,8 @@ public function getQuizForStudent($id)
     ]);
 }
 
+
+
 public function submitQuiz(Request $request, $id)
 {
     $request->validate([
@@ -226,9 +232,7 @@ public function submitQuiz(Request $request, $id)
         'answers.*.selected_answer' => 'required|in:A,B,C,D',
     ]);
 
-    $user = $request->user(); // Ambil siswa yang login
     $quiz = Quiz::find($id);
-    
     if (!$quiz) {
         return response()->json(['message' => 'Quiz tidak ditemukan'], 404);
     }
@@ -236,7 +240,6 @@ public function submitQuiz(Request $request, $id)
     $correctAnswers = 0;
     $totalQuestions = count($request->answers);
 
-    // Cek jawaban siswa
     foreach ($request->answers as $answer) {
         $question = QuizQuestion::find($answer['question_id']);
         if ($question->correct_answer === $answer['selected_answer']) {
@@ -246,14 +249,19 @@ public function submitQuiz(Request $request, $id)
 
     $score = round(($correctAnswers / $totalQuestions) * 100, 2);
 
-    // **Simpan hasil ke database (tabel quiz_results)**
-    $quizResult = \App\Models\QuizResult::create([
-        'user_id' => $user->id,
-        'quiz_id' => $quiz->id,
-        'score' => $score,
-        'correct_answers' => $correctAnswers,
-        'total_questions' => $totalQuestions,
-    ]);
+    // 🔥 **Jika skor 100, update badge**
+    if ($score == 100) {
+        $badge = Badge::where('user_id', auth()->id())->first();
+        if ($badge) {
+            $badge->increment('jumlah'); // Tambah jumlah badge
+        } else {
+            Badge::create([
+                'user_id' => auth()->id(),
+                'jumlah' => 1,
+                'badge_level' => 'Gold'
+            ]);
+        }
+    }
 
     return response()->json([
         'status' => 'success',

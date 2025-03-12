@@ -9,12 +9,6 @@ class Badge extends Model
 {
     use HasFactory;
 
-    protected $table = 'badges'; // Pastikan sesuai dengan tabel di database
-
-    protected $fillable = ['user_id', 'name'];
-
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
+    protected $table = 'badges'; // Nama tabel di database
+    protected $fillable = ['user_id', 'jumlah', 'badge_level']; // Pastikan atribut ini bisa diisi massal
 }
