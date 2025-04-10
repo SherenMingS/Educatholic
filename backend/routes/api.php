@@ -80,6 +80,10 @@ use App\Http\Controllers\LeaderboardController;
 
 Route::middleware(['auth:sanctum'])->get('/leaderboard/students', [LeaderboardController::class, 'getStudentLeaderboard']);
 
+Route::middleware(['auth:sanctum', 'role:guru'])->get('/leaderboard/teacher', [LeaderboardController::class, 'getTeacherLeaderboard']);
 
+use App\Http\Controllers\StudentController;
+
+Route::middleware(['auth:sanctum', 'role:siswa'])->get('/student/profile', [StudentController::class, 'getProfile']);
 
 

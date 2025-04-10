@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/screen/leaderboard_siswa.dart';
-
 import 'quizlist_siswa.dart';
+import 'materi_siswa.dart';
+import 'profile_siswa.dart';
+
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 
 import '../controllers/dashboard_controller.dart';
-import 'materi_siswa.dart'; // Import halaman Materi
-import 'profile_siswa.dart'; // Import halaman Profil
+import 'package:frontend/widgets/theme_switch.dart'; // Import Switch Theme
 
 class DashboardSiswa extends StatefulWidget {
   @override
@@ -28,38 +29,82 @@ class CustomAppBarClipper extends CustomClipper<Path> {
   }
 
   @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) {
-    return false;
-  }
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
 
 class _DashboardSiswaState extends State<DashboardSiswa> {
-  int _selectedIndex = 2; // **Home sebagai default tab aktif**
+  int _selectedIndex = 2; // Default: Home
   final DashboardController controller = Get.put(DashboardController());
 
   @override
   void initState() {
     super.initState();
     _checkToken();
+    _fetchData();
   }
 
   void _checkToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('token');
-
     if (token != null) {
-      print("Token masih ada: $token");
+      print("Token tersedia: $token");
     } else {
-      print("Token sudah dihapus atau tidak ditemukan.");
+      print("Token tidak ditemukan.");
+    }
+  }
+
+  void _fetchData() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('token');
+    if (token != null) {
+      controller.fetchDashboard(token);
+    }
+  }
+
+  void _onItemTapped(int index) async {
+    if (index == _selectedIndex) return;
+
+    setState(() {
+      _selectedIndex = index;
+    });
+
+    switch (index) {
+      case 0:
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (_) => MateriPage()));
+        break;
+      case 1:
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (_) => StudentQuizListPage()));
+        break;
+      case 2:
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (_) => DashboardSiswa()));
+        break;
+      case 3:
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        String? token = prefs.getString('token');
+        if (token != null) {
+          Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => LeaderboardScreen(token: token)));
+        } else {
+          print("Token tidak ditemukan");
+        }
+        break;
+      case 4:
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (_) => ProfilePage()));
+        break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    _fetchData();
-
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor:
+          Theme.of(context).scaffoldBackgroundColor, // 🔥 GANTI warna latar
       body: Stack(
         children: [
           Positioned.fill(
@@ -82,23 +127,11 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
           ),
           Positioned(top: 0, left: 0, right: 0, child: _buildAppBar()),
           Positioned(
-              top: 130,
-              left: 20,
-              right: 20,
-              child: _buildFeatureButtons(context)),
+              top: 130, left: 20, right: 20, child: _buildFeatureButtons()),
         ],
       ),
-      bottomNavigationBar: _buildCurvedNavBar(context),
+      bottomNavigationBar: _buildCurvedNavBar(),
     );
-  }
-
-  void _fetchData() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('token');
-
-    if (token != null) {
-      controller.fetchDashboard(token);
-    }
   }
 
   Widget _buildAppBar() {
@@ -107,47 +140,51 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
       child: Container(
         width: double.infinity,
         height: 180,
-        color: Colors.blue,
-        padding: const EdgeInsets.only(top: 0, left: 20, right: 20),
+        color: Theme.of(context).primaryColor, // 🔥 Dinamis ikut Theme
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Row(
+          mainAxisAlignment:
+              MainAxisAlignment.spaceBetween, // 🔥 supaya ada ThemeSwitch
           children: [
-            CircleAvatar(
-              backgroundColor: Colors.white,
-              radius: 25,
-              child: Icon(Icons.person, color: Colors.blue, size: 35),
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
+            Row(
               children: [
-                const Text(
-                  "Halo,",
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w400),
+                CircleAvatar(
+                  backgroundColor: Colors.white,
+                  radius: 25,
+                  child: Icon(Icons.person,
+                      color: Theme.of(context).primaryColor, size: 35),
                 ),
-                Obx(() => Text(
-                      controller.name.value,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold),
-                    )),
+                const SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text("Halo,",
+                        style: TextStyle(color: Colors.white, fontSize: 18)),
+                    Obx(() => Text(
+                          controller.name.value,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )),
+                  ],
+                ),
               ],
             ),
+            const ThemeSwitchButton(), // 🔥 Tambahkan ThemeSwitch di AppBar
           ],
         ),
       ),
     );
   }
 
-  Widget _buildFeatureButtons(BuildContext context) {
+  Widget _buildFeatureButtons() {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor, // 🔥 Ikut tema
         borderRadius: BorderRadius.circular(20),
         boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 5)],
       ),
@@ -156,25 +193,20 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
         children: [
           _featureButton(Icons.menu_book, "Materi", () {
             Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => MateriPage()),
-            );
+                context, MaterialPageRoute(builder: (_) => MateriPage()));
           }),
           _featureButton(Icons.assignment, "Kuis", () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => StudentQuizListPage()),
-            );
+            Navigator.push(context,
+                MaterialPageRoute(builder: (_) => StudentQuizListPage()));
           }),
           _featureButton(Icons.emoji_events, "Leaderboard", () async {
             SharedPreferences prefs = await SharedPreferences.getInstance();
             String? token = prefs.getString('token');
             if (token != null) {
               Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => LeaderboardScreen(token: token)),
-              );
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => LeaderboardScreen(token: token)));
             }
           }),
         ],
@@ -187,11 +219,9 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
       onTap: onTap,
       child: Column(
         children: [
-          Icon(icon, size: 36, color: Colors.black),
+          Icon(icon, size: 36, color: Theme.of(context).iconTheme.color),
           const SizedBox(height: 4),
-          Text(label,
-              style:
-                  const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+          Text(label, style: Theme.of(context).textTheme.bodyLarge),
         ],
       ),
     );
@@ -226,40 +256,43 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
       margin: const EdgeInsets.symmetric(vertical: 6),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.blue.shade50,
+        color: Theme.of(context).cardColor, // 🔥 Ikut tema
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
           Container(
-            padding: EdgeInsets.all(8),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-                color: Colors.blue.shade200, shape: BoxShape.circle),
+              color: Theme.of(context).primaryColor, // 🔥 Ikut tema primary
+              shape: BoxShape.circle,
+            ),
             child: Icon(icon, size: 28, color: Colors.white),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(title,
-                style:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+            child: Text(
+              title,
+              style: Theme.of(context).textTheme.bodyLarge, // 🔥 Text dinamis
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildCurvedNavBar(BuildContext context) {
+  Widget _buildCurvedNavBar() {
     return CurvedNavigationBar(
       backgroundColor: Colors.transparent,
-      color: Colors.blue,
+      color: Theme.of(context).primaryColor, // 🔥 Ikut tema
       height: 70,
-      index: _selectedIndex, // **Home sebagai default tab aktif**
-      animationDuration: Duration(milliseconds: 300),
+      index: _selectedIndex,
+      animationDuration: const Duration(milliseconds: 300),
       items: [
         Icon(Icons.menu_book,
             size: 28,
             color: _selectedIndex == 0 ? Colors.yellow : Colors.white),
-        Icon(Icons.quiz,
+        Icon(Icons.assignment,
             size: 28,
             color: _selectedIndex == 1 ? Colors.yellow : Colors.white),
         Icon(Icons.home,
@@ -272,30 +305,7 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
             size: 28,
             color: _selectedIndex == 4 ? Colors.yellow : Colors.white),
       ],
-      onTap: (index) {
-        if (index != _selectedIndex) {
-          setState(() {
-            _selectedIndex = index;
-          });
-
-          switch (index) {
-            case 0:
-              Navigator.pushReplacement(context,
-                  MaterialPageRoute(builder: (context) => MateriPage()));
-              break;
-            case 2:
-              Navigator.pushReplacement(context,
-                  MaterialPageRoute(builder: (context) => DashboardSiswa()));
-              break;
-            case 4:
-              Navigator.pushReplacement(context,
-                  MaterialPageRoute(builder: (context) => ProfilePage()));
-              break;
-            default:
-              break;
-          }
-        }
-      },
+      onTap: _onItemTapped,
     );
   }
 }

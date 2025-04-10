@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/screen/leaderboard_guru.dart';
 import 'package:frontend/screen/materilist_guru.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -183,7 +184,26 @@ class _DashboardGuruState extends State<DashboardGuru> {
             MaterialPageRoute(builder: (context) => QuizListPage()),
           );
         }),
-        _managementCard(Icons.class_, "Manage Kelas", () {}),
+        _managementCard(Icons.leaderboard, "Manage Leaderboard", () async {
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          String? token = prefs.getString('token');
+          String? kelas =
+              prefs.getString('kelas_guru'); // Ambil kelas guru yang aktif
+
+          if (kelas != null && token != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    TeacherLeaderboardScreen(kelas: kelas, token: token),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Silakan pilih kelas terlebih dahulu")),
+            );
+          }
+        }),
         _managementCard(Icons.people, "Manage Siswa", () async {
           SharedPreferences prefs = await SharedPreferences.getInstance();
           String? token = prefs.getString('token');

@@ -277,4 +277,25 @@ class ApiService {
       throw Exception("Failed to load leaderboard: ${response.statusCode}");
     }
   }
+
+  //LB Guru
+  static Future<List<LeaderboardModel>> getTeacherLeaderboard(
+      String kelas, String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/leaderboard/teacher?kelas=$kelas'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      List<dynamic> data = jsonDecode(response.body)['leaderboard'];
+      return data
+          .map((leaderboard) => LeaderboardModel.fromJson(leaderboard))
+          .toList();
+    } else {
+      throw Exception('Gagal mengambil leaderboard');
+    }
+  }
 }
