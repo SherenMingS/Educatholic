@@ -19,6 +19,7 @@ class User extends Authenticatable
         'remember_token',
         'role',
         'kelas', // Tambahkan ini supaya bisa disimpan
+        'photo',
     ];
 
     protected $hidden = [

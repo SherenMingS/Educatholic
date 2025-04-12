@@ -85,5 +85,6 @@ Route::middleware(['auth:sanctum', 'role:guru'])->get('/leaderboard/teacher', [L
 use App\Http\Controllers\StudentController;
 
 Route::middleware(['auth:sanctum', 'role:siswa'])->get('/student/profile', [StudentController::class, 'getProfile']);
+Route::middleware('auth:sanctum')->post('/user/update-photo', [UserController::class, 'updatePhoto']);
 
 

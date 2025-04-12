@@ -14,6 +14,7 @@ class UserController extends Controller
             'email' => auth()->user()->email,
             'kelas' => auth()->user()->kelas, // Kirim kelas user yang login
             'role' => auth()->user()->role,
+            'photo' => auth()->user()->photo,
         ]);
     }
 
@@ -38,4 +39,27 @@ class UserController extends Controller
             'data' => $students
         ]);
     }
+
+    public function updatePhoto(Request $request)
+{
+    $user = auth()->user();
+
+    $request->validate([
+        'photo' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+    ]);
+
+    if ($request->hasFile('photo')) {
+        $file = $request->file('photo');
+        $filename = time() . '.' . $file->getClientOriginalExtension();
+        $file->move(public_path('uploads/profile'), $filename);
+
+        $user->photo = 'uploads/profile/' . $filename;
+        $user->save();
+
+        return response()->json(['message' => 'Foto profil berhasil diupdate!', 'photo' => $user->photo]);
+    }
+
+    return response()->json(['message' => 'Tidak ada file yang diupload.'], 400);
+}
+
 }

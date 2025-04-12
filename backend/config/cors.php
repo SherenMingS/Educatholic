@@ -15,20 +15,23 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    'paths' => [
+        'api/*',              // Semua API route
+        'sanctum/csrf-cookie', // Untuk Sanctum auth
+        'uploads/*',           // 🔥 Untuk akses gambar di folder uploads/
+    ],
 
-    'allowed_methods' => ['*'],
+    'allowed_methods' => ['*'], // 🔥 Bolehkan semua HTTP methods (GET, POST, PUT, DELETE, dll)
 
-    'allowed_origins' => ['*'],
+    'allowed_origins' => ['*'], // 🔥 Izinkan semua asal domain (localhost, IP, dll)
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['*'],
+    'allowed_headers' => ['*'], // 🔥 Izinkan semua headers (Authorization, Content-Type, dll)
 
-    'exposed_headers' => [],
+    'exposed_headers' => [],    // Biasanya kosong, kecuali perlu expose header tertentu
 
-    'max_age' => 0,
+    'max_age' => 0,             // Cache preflight request (OPTIONS)
 
-    'supports_credentials' => false,
-
+    'supports_credentials' => false, // 🔥 Kalau butuh kirim cookie/session, set true, kalau token aja cukup false
 ];
