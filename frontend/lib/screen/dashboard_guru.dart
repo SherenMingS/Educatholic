@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/screen/leaderboard_guru.dart';
+import 'package:frontend/screen/manageabsensi_guru.dart';
 import 'package:frontend/screen/materilist_guru.dart';
+import 'package:frontend/screen/profile_guru.dart'; // Import halaman profile
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../controllers/dashboard_controller.dart';
@@ -9,6 +11,8 @@ import 'editmateri_guru.dart';
 import 'pilihkelas_guru.dart';
 import 'studentlist_guru.dart';
 import 'quizlist_guru.dart';
+import 'package:frontend/screen/listabsensi_guru.dart'; // Ensure this file contains the ListAbsensiGuruPage class
+import 'package:frontend/screen/createabsensi_guru.dart';
 
 class DashboardGuru extends StatefulWidget {
   @override
@@ -34,25 +38,29 @@ class _DashboardGuruState extends State<DashboardGuru> {
       _kelasGuru = kelas;
     });
 
-    print("Token dari SharedPreferences: $token"); // Debugging
-    print("Kelas aktif: $_kelasGuru"); // Debugging
-
     if (token != null) {
-      controller.fetchDashboardGuru(token); // Fetch data untuk guru
+      controller.fetchDashboardGuru(token);
     }
   }
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    if (index == 2) {
+      // Kalau klik icon Profile
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => ProfileGuruPage()),
+      );
+    } else {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
   }
 
   Future<void> _changeClass() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.remove('kelas_guru'); // Hapus kelas lama
+    await prefs.remove('kelas_guru');
 
-    // Arahkan ke halaman pilih kelas
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => PilihKelasPage()),
@@ -162,8 +170,8 @@ class _DashboardGuruState extends State<DashboardGuru> {
           Text("Statistik Kehadiran",
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           SizedBox(height: 10),
-          _buildProgressBar("7A", 0.78),
-          _buildProgressBar("7B", 0.90),
+          _buildProgressBar("8A", 0.78),
+          _buildProgressBar("8B", 0.90),
         ],
       ),
     );
@@ -172,10 +180,23 @@ class _DashboardGuruState extends State<DashboardGuru> {
   Widget _buildManagementOptions(BuildContext context) {
     return Column(
       children: [
+        _managementCard(Icons.qr_code, "Buat Sesi Absensi", () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => CreateAbsensiGuruPage()),
+          );
+        }),
         _managementCard(Icons.book, "Manage Materi", () {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => MateriGuruPage()),
+          );
+        }),
+        _managementCard(Icons.edit, "Manage Absensi", () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => ListAttendanceSessionsPage()),
           );
         }),
         _managementCard(Icons.assignment, "Kelola Kuis", () {
@@ -187,8 +208,7 @@ class _DashboardGuruState extends State<DashboardGuru> {
         _managementCard(Icons.leaderboard, "Manage Leaderboard", () async {
           SharedPreferences prefs = await SharedPreferences.getInstance();
           String? token = prefs.getString('token');
-          String? kelas =
-              prefs.getString('kelas_guru'); // Ambil kelas guru yang aktif
+          String? kelas = prefs.getString('kelas_guru');
 
           if (kelas != null && token != null) {
             Navigator.push(
@@ -207,8 +227,7 @@ class _DashboardGuruState extends State<DashboardGuru> {
         _managementCard(Icons.people, "Manage Siswa", () async {
           SharedPreferences prefs = await SharedPreferences.getInstance();
           String? token = prefs.getString('token');
-          String? kelas =
-              prefs.getString('kelas_guru'); // Ambil kelas guru yang aktif
+          String? kelas = prefs.getString('kelas_guru');
 
           if (kelas != null && token != null) {
             Navigator.push(
@@ -259,7 +278,7 @@ class _DashboardGuruState extends State<DashboardGuru> {
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.person),
-          label: "Manage Siswa",
+          label: "Profile",
         ),
       ],
     );

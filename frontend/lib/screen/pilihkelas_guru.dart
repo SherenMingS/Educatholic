@@ -26,13 +26,13 @@ class PilihKelasPage extends StatelessWidget {
                 style: TextStyle(fontSize: 18)),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () => _setKelas(context, "7A"),
-              child: Text("Kelas 7A"),
+              onPressed: () => _setKelas(context, "8A"),
+              child: Text("Kelas 8A"),
             ),
             SizedBox(height: 10),
             ElevatedButton(
-              onPressed: () => _setKelas(context, "7B"),
-              child: Text("Kelas 7B"),
+              onPressed: () => _setKelas(context, "8B"),
+              child: Text("Kelas 8B"),
             ),
           ],
         ),

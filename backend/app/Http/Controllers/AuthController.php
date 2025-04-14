@@ -37,28 +37,30 @@ class AuthController extends Controller
         ]);
     }
     public function register(Request $request)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|in:siswa,guru'
-        ]);
-    
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'password_confirmation' => Hash::make($request->password_confirmation),
-            'role' => $request->role
-        ]);
-    
-        $token = $user->createToken('auth_token')->plainTextToken;
-    
-        return response()->json([
-            'message' => 'Registrasi berhasil',
-            'access_token' => $token,
-            'user' => $user
-        ], 201);
-    }
+{
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|string|email|max:255|unique:users',
+        'password' => 'required|string|min:8|confirmed',
+        'role' => 'required|in:siswa,guru',
+        'kelas' => 'required_if:role,siswa' // ✅ Tambahkan validasi kelas untuk siswa
+    ]);
+
+    $user = User::create([
+        'name' => $request->name,
+        'email' => $request->email,
+        'password' => Hash::make($request->password),
+        'role' => $request->role,
+        'kelas' => $request->kelas // ✅ Simpan kelas
+    ]);
+
+    $token = $user->createToken('auth_token')->plainTextToken;
+
+    return response()->json([
+        'message' => 'Registrasi berhasil',
+        'access_token' => $token,
+        'user' => $user
+    ], 201);
+}
+
 }    

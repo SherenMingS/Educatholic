@@ -88,3 +88,26 @@ Route::middleware(['auth:sanctum', 'role:siswa'])->get('/student/profile', [Stud
 Route::middleware('auth:sanctum')->post('/user/update-photo', [UserController::class, 'updatePhoto']);
 
 
+use App\Http\Controllers\BibleController;
+
+Route::get('/books', [BibleController::class, 'getBooks']);
+Route::get('/bible', [BibleController::class, 'getVerse']);
+
+use App\Http\Controllers\AttendanceSessionController;
+
+Route::post('/attendance-sessions', [AttendanceSessionController::class, 'generate']);
+
+use App\Http\Controllers\AttendanceRecordController;
+
+// Menampilkan daftar absensi berdasarkan sesi
+Route::middleware('auth:sanctum')->get('/attendance-sessions/{session_id}/records', [AttendanceRecordController::class, 'getRecordsBySession']);
+
+// Mengupdate status absensi siswa (izin / sakit)
+// Route::middleware('auth:sanctum')->put('/attendance-records/{id}', [AttendanceRecordController::class, 'updateStatus']);
+Route::put('/attendance-records/{siswaId}', [AttendanceRecordController::class, 'updateOrCreateAbsensi']);
+
+Route::middleware('auth:sanctum')->get('/attendance-sessions', [AttendanceSessionController::class, 'index']);
+
+Route::get('/attendance-records/{sessionId}', [AttendanceRecordController::class, 'getBySession']);
+Route::get('/students-by-class/{kelas}', [StudentController::class, 'getByClass']);
+Route::get('/attendance-records/session/{sessionId}', [AttendanceRecordController::class, 'getAbsensiBySession']);

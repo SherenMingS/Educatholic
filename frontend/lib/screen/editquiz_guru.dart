@@ -23,7 +23,7 @@ class _EditQuizPageState extends State<EditQuizPage> {
   DateTime? selectedDeadline;
   List<Map<String, dynamic>> questions = [];
 
-  final List<String> classList = ['7A', '7B', '8A', '8B', '9A', '9B'];
+  final List<String> classList = ['8A', '8B', '9A', '9B'];
 
   @override
   void initState() {

@@ -17,4 +17,15 @@ class StudentController extends Controller
             'photo' => $siswa->photo,
         ]);
     }
+
+    public function getByClass($kelas)
+{
+    $students = \App\Models\User::where('kelas', $kelas)->where('role', 'siswa')->get();
+
+    return response()->json([
+        'status' => 'success',
+        'data' => $students,
+    ]);
+}
+
 }

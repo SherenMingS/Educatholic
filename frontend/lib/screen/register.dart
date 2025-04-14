@@ -175,7 +175,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           kelas = newValue;
                         });
                       },
-                      items: ['7A', '7B'].map((kelas) {
+                      items: ['8A', '8B'].map((kelas) {
                         return DropdownMenuItem(
                             value: kelas, child: Text(kelas));
                       }).toList(),
