@@ -3,43 +3,57 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use App\Models\BibleVerse;
+use App\Http\Controllers\Controller; // ✅ Tambahkan baris ini
 
 class BibleController extends Controller
 {
-    // API untuk list semua kitab
-    public function getBooks()
+    public function books()
     {
-        $books = DB::table('books')->orderBy('book_id')->get();
-        return response()->json([
-            'status' => 'success',
-            'data' => $books
-        ]);
+        return response()->json(
+            BibleVerse::select('book')->distinct()->orderBy('book')->pluck('book')
+        );
     }
 
-    // API untuk ambil ayat berdasarkan book_id, chapter, dan verse
-    public function getVerse(Request $request)
+    public function chapters(Request $request)
     {
-        $bookId = $request->query('book_id');
-        $chapter = $request->query('chapter');
-        $verse = $request->query('verse');
+        $request->validate(['book' => 'required']);
+        return response()->json(
+            BibleVerse::where('book', $request->book)
+                ->select('chapter')->distinct()->orderBy('chapter')->pluck('chapter')
+        );
+    }
 
-        $verseData = DB::table('bible_verses')
-                        ->where('book_id', $bookId)
-                        ->where('chapter', $chapter)
-                        ->where('verse', $verse)
-                        ->first();
+    public function verses(Request $request)
+    {
+        $request->validate(['book' => 'required', 'chapter' => 'required']);
+        return response()->json(
+            BibleVerse::where('book', $request->book)
+                ->where('chapter', $request->chapter)
+                ->select('verse')->orderBy('verse')->pluck('verse')
+        );
+    }
 
-        if (!$verseData) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Ayat tidak ditemukan'
-            ], 404);
+    public function lookup(Request $request)
+    {
+        $request->validate([
+            'book' => 'required',
+            'chapter' => 'required',
+            'verse' => 'required',
+        ]);
+
+        $verse = BibleVerse::where('book', $request->book)
+            ->where('chapter', $request->chapter)
+            ->where('verse', $request->verse)
+            ->first();
+
+        if (!$verse) {
+            return response()->json(['message' => 'Ayat tidak ditemukan'], 404);
         }
 
         return response()->json([
-            'status' => 'success',
-            'data' => $verseData
+            'ayat' => "{$verse->book} {$verse->chapter}:{$verse->verse}",
+            'isi_ayat' => $verse->text
         ]);
     }
 }

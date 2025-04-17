@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:dropdown_search/dropdown_search.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class KelolaMateriPage extends StatefulWidget {
@@ -24,10 +25,19 @@ class _KelolaMateriPageState extends State<KelolaMateriPage> {
   Uint8List? _selectedFileBytes;
   String? _selectedFileName;
 
+  String? selectedBook;
+  int? selectedChapter;
+  int? selectedVerse;
+
+  List<String> books = [];
+  List<int> chapters = [];
+  List<int> verses = [];
+
   @override
   void initState() {
     super.initState();
-    _getKelasAktif(); // Ambil kelas aktif dari SharedPreferences
+    _getKelasAktif();
+    fetchBooks();
   }
 
   Future<void> _getKelasAktif() async {
@@ -36,6 +46,48 @@ class _KelolaMateriPageState extends State<KelolaMateriPage> {
     if (kelasAktif != null) {
       setState(() {
         _kelasController.text = kelasAktif;
+      });
+    }
+  }
+
+  Future<void> fetchBooks() async {
+    final res =
+        await http.get(Uri.parse('http://127.0.0.1:8000/api/bible/books'));
+    if (res.statusCode == 200) {
+      setState(() {
+        books = List<String>.from(jsonDecode(res.body));
+      });
+    }
+  }
+
+  Future<void> fetchChapters(String book) async {
+    final res = await http
+        .get(Uri.parse('http://127.0.0.1:8000/api/bible/chapters?book=$book'));
+    if (res.statusCode == 200) {
+      setState(() {
+        chapters = List<int>.from(jsonDecode(res.body));
+      });
+    }
+  }
+
+  Future<void> fetchVerses(String book, int chapter) async {
+    final res = await http.get(Uri.parse(
+        'http://127.0.0.1:8000/api/bible/verses?book=$book&chapter=$chapter'));
+    if (res.statusCode == 200) {
+      setState(() {
+        verses = List<int>.from(jsonDecode(res.body));
+      });
+    }
+  }
+
+  Future<void> fetchIsiAyat() async {
+    final res = await http.get(Uri.parse(
+        'http://127.0.0.1:8000/api/bible/lookup?book=$selectedBook&chapter=$selectedChapter&verse=$selectedVerse'));
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      setState(() {
+        _ayatController.text = data['ayat'];
+        _isiAyatController.text = data['isi_ayat'];
       });
     }
   }
@@ -77,7 +129,6 @@ class _KelolaMateriPageState extends State<KelolaMateriPage> {
       request.fields['isi_ayat'] = _isiAyatController.text;
       request.fields['tanggal_tayang'] = _tanggalController.text;
 
-      // Tambahkan token autentikasi ke header (wajib jika pakai Sanctum atau JWT)
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('token');
       if (token != null) {
@@ -93,11 +144,7 @@ class _KelolaMateriPageState extends State<KelolaMateriPage> {
       );
 
       var response = await request.send();
-      var responseBody =
-          await response.stream.bytesToString(); // Ambil respons JSON
-
-      print("🔍 Status Code: ${response.statusCode}");
-      print("🔍 Respons API: $responseBody");
+      var responseBody = await response.stream.bytesToString();
 
       if (response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -105,8 +152,7 @@ class _KelolaMateriPageState extends State<KelolaMateriPage> {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text("Gagal mengunggah materi: ${response.statusCode}")),
+          SnackBar(content: Text("Gagal mengunggah materi.")),
         );
       }
     } catch (e) {
@@ -140,8 +186,79 @@ class _KelolaMateriPageState extends State<KelolaMateriPage> {
                   isMultiline: true),
               _buildReadOnlyField("Kelas", _kelasController),
               _buildTextField("Poin-poin", _poinController),
+              SizedBox(height: 10),
+              Text("Referensi Alkitab",
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              DropdownSearch<String>(
+                items: books,
+                selectedItem: selectedBook,
+                popupProps: PopupProps.menu(
+                  showSearchBox: true,
+                  searchFieldProps: TextFieldProps(
+                    decoration: InputDecoration(
+                      hintText: 'Cari kitab...',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                dropdownDecoratorProps: DropDownDecoratorProps(
+                  dropdownSearchDecoration: InputDecoration(
+                    labelText: "Pilih Kitab",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                onChanged: (val) {
+                  setState(() {
+                    selectedBook = val;
+                    selectedChapter = null;
+                    selectedVerse = null;
+                    _ayatController.clear();
+                    _isiAyatController.clear();
+                    chapters.clear();
+                    verses.clear();
+                  });
+                  if (val != null) fetchChapters(val);
+                },
+              ),
+              if (selectedBook != null)
+                DropdownButton<int>(
+                  isExpanded: true,
+                  hint: Text("Pilih Pasal"),
+                  value: selectedChapter,
+                  items: chapters
+                      .map((ch) =>
+                          DropdownMenuItem(value: ch, child: Text("Pasal $ch")))
+                      .toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      selectedChapter = val;
+                      selectedVerse = null;
+                      _ayatController.clear();
+                      _isiAyatController.clear();
+                      verses.clear();
+                    });
+                    fetchVerses(selectedBook!, val!);
+                  },
+                ),
+              if (selectedChapter != null)
+                DropdownButton<int>(
+                  isExpanded: true,
+                  hint: Text("Pilih Ayat"),
+                  value: selectedVerse,
+                  items: verses
+                      .map((v) =>
+                          DropdownMenuItem(value: v, child: Text("Ayat $v")))
+                      .toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      selectedVerse = val;
+                    });
+                    fetchIsiAyat();
+                  },
+                ),
               _buildTextField("Ayat", _ayatController),
-              _buildTextField("Isi Ayat", _isiAyatController),
+              _buildTextField("Isi Ayat", _isiAyatController,
+                  isMultiline: true),
               SizedBox(height: 10),
               Text("File",
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),

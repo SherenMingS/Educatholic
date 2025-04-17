@@ -114,6 +114,50 @@ class MateriController extends Controller
             ], 500);
         }
     }
+
+    public function updateWithFile(Request $request, $id)
+{
+    try {
+        $materi = Materi::find($id);
+        if (!$materi) {
+            return response()->json(['message' => 'Materi tidak ditemukan'], 404);
+        }
+
+        $request->validate([
+            'judul' => 'required|string|max:255',
+            'deskripsi' => 'nullable|string',
+            'kelas' => 'required|string|max:10',
+            'poin_poin' => 'nullable|string',
+            'ayat' => 'nullable|string',
+            'isi_ayat' => 'nullable|string',
+            'tanggal_tayang' => 'required|date',
+            'file' => 'nullable|file|mimes:pdf,doc,docx,png|max:2048',
+        ]);
+
+        $materi->judul = $request->judul;
+        $materi->deskripsi = $request->deskripsi;
+        $materi->kelas = $request->kelas;
+        $materi->poin_poin = $request->poin_poin;
+        $materi->ayat = $request->ayat;
+        $materi->isi_ayat = $request->isi_ayat;
+        $materi->tanggal_tayang = $request->tanggal_tayang;
+
+        if ($request->hasFile('file') && $request->file('file')->isValid()) {
+            $filePath = $request->file('file')->store('materi_files', 'public');
+            $materi->file = $filePath;
+        }
+
+        $materi->save();
+
+        return response()->json([
+            'message' => 'Materi berhasil diperbarui (dengan file)',
+            'materi' => $materi
+        ]);
+    } catch (\Exception $e) {
+        return response()->json(['message' => 'Gagal update', 'error' => $e->getMessage()], 500);
+    }
+}
+
     public function destroy($id)
     {
         try {

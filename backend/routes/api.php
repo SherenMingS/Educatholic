@@ -53,10 +53,13 @@ Route::middleware(['auth:sanctum'])->get('/user/profile', [UserController::class
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/materi', [MateriController::class, 'index']);
     Route::get('/materi/{id}', [MateriController::class, 'show']); // Ambil detail materi
+
     Route::post('/materi', [MateriController::class, 'store'])->middleware('role:guru');
     Route::put('/materi/{id}', [MateriController::class, 'update'])->middleware('role:guru');
+    Route::post('/materi/update-file/{id}', [MateriController::class, 'updateWithFile'])->middleware('role:guru');
     Route::delete('/materi/{id}', [MateriController::class, 'destroy'])->middleware('role:guru');
 });
+
 
 use App\Http\Controllers\QuizController;
 
@@ -90,8 +93,14 @@ Route::middleware('auth:sanctum')->post('/user/update-photo', [UserController::c
 
 use App\Http\Controllers\BibleController;
 
-Route::get('/books', [BibleController::class, 'getBooks']);
-Route::get('/bible', [BibleController::class, 'getVerse']);
+Route::prefix('bible')->group(function () {
+    Route::get('/books', [BibleController::class, 'books']);
+    Route::get('/chapters', [BibleController::class, 'chapters']);
+    Route::get('/verses', [BibleController::class, 'verses']);
+    Route::get('/lookup', [BibleController::class, 'lookup']);
+});
+
+
 
 use App\Http\Controllers\AttendanceSessionController;
 
@@ -113,3 +122,11 @@ Route::get('/students-by-class/{kelas}', [StudentController::class, 'getByClass'
 Route::get('/attendance-records/session/{sessionId}', [AttendanceRecordController::class, 'getAbsensiBySession']);
 Route::post('/attendance/check-code', [AttendanceRecordController::class, 'checkKode']);
 Route::middleware(['auth:sanctum', 'role:siswa'])->post('/attendance-records/absen', [AttendanceRecordController::class, 'submitAbsen']);
+
+use App\Http\Controllers\TeacherController;
+
+Route::middleware(['auth:sanctum', 'role:guru'])->get('/teacher/profile', [TeacherController::class, 'profile']);
+
+Route::middleware(['auth:sanctum', 'role:guru'])->group(function () {
+    Route::post('/teacher/update-photo', [TeacherController::class, 'updatePhoto']);
+});
