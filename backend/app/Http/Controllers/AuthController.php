@@ -12,30 +12,32 @@ class AuthController extends Controller
 {
     public function login(Request $request)
     {
-        // Validasi input
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',
         ]);
     
-        // Cari user berdasarkan email
         $user = User::where('email', $request->email)->first();
     
-        // Cek apakah user ditemukan dan password sesuai
         if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json(['message' => 'Email atau password salah!'], 401);
         }
     
-        // Buat token untuk autentikasi
         $token = $user->createToken('authToken')->plainTextToken;
     
         return response()->json([
             'access_token' => $token,
             'token_type' => 'Bearer',
             'role' => $user->role,
-            'kelas' => $user->kelas ?? null, // Tambahkan kelas di response jika ada
+            'kelas' => $user->kelas ?? null,
+            'user' => [
+                'id' => $user->id,               // ✅ penting untuk Flutter
+                'name' => $user->name,
+                'email' => $user->email,
+            ]
         ]);
     }
+    
     public function register(Request $request)
 {
     $request->validate([

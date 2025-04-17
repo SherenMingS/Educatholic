@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/screen/absencode_siswa.dart';
 import 'package:frontend/screen/leaderboard_siswa.dart';
 import 'quizlist_siswa.dart';
 import 'materi_siswa.dart';
@@ -34,8 +35,10 @@ class CustomAppBarClipper extends CustomClipper<Path> {
 
 class _DashboardSiswaState extends State<DashboardSiswa> {
   int _selectedIndex = 2; // Default: Home
+
   final DashboardController controller = Get.put(DashboardController());
 
+  int? userId;
   @override
   void initState() {
     super.initState();
@@ -46,6 +49,14 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
   void _checkToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('token');
+    int? storedUserId = prefs.getInt('user_id'); // ✅ Ambil user_id
+    setState(() {
+      userId = storedUserId;
+    });
+
+    print("Token: $token");
+    print("User ID: $userId");
+
     if (token != null) {
       print("Token tersedia: $token");
     } else {
@@ -242,6 +253,30 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
   Widget _buildStats() {
     return Column(
       children: [
+        // 🔥 Tombol Absen Sekarang
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            icon: Icon(Icons.qr_code), // Atau ikon lainnya
+            label: Text("Absen Sekarang"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              textStyle: const TextStyle(fontSize: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AbsenKodePage(),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
         _statCard(Icons.history, "Riwayat Aktivitas Anda"),
         _statCard(Icons.show_chart,
             "Rata-rata Skor Kuis ${controller.quizAverage.value}%"),

@@ -91,10 +91,19 @@ class _LoginScreenState extends State<LoginScreen> {
         await prefs.setString('kelas', kelas); // Simpan kelas siswa/guru
       }
 
+      // ✅ Tambahkan baris ini untuk simpan user_id
+      
+      await prefs.setInt('user_id', data['user']['id']);
+      print(">> USER ID DISIMPAN: ${data['user']['id']}");
+
+      final checkPrefs = await SharedPreferences.getInstance();
+      print(">> CEK USER ID DARI PREFS: ${checkPrefs.getInt('user_id')}");
+
       // Debugging
       print("Token yang disimpan: $token");
       print("Role yang disimpan: $role");
       print("Kelas yang disimpan: $kelas");
+      print("User ID yang disimpan: ${data['user']['id']}");
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Login Berhasil!")),

@@ -111,3 +111,5 @@ Route::middleware('auth:sanctum')->get('/attendance-sessions', [AttendanceSessio
 Route::get('/attendance-records/{sessionId}', [AttendanceRecordController::class, 'getBySession']);
 Route::get('/students-by-class/{kelas}', [StudentController::class, 'getByClass']);
 Route::get('/attendance-records/session/{sessionId}', [AttendanceRecordController::class, 'getAbsensiBySession']);
+Route::post('/attendance/check-code', [AttendanceRecordController::class, 'checkKode']);
+Route::middleware(['auth:sanctum', 'role:siswa'])->post('/attendance-records/absen', [AttendanceRecordController::class, 'submitAbsen']);

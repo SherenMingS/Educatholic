@@ -151,5 +151,104 @@ class AttendanceRecordController extends Controller
         'message' => 'Absensi berhasil disimpan.'
     ]);
 }
+
+public function checkKode(Request $request)
+{
+    $request->validate([
+        'code' => 'required|string',
+        'user_id' => 'required|integer',
+    ]);
+
+    $kode = $request->code;
+    $userId = $request->user_id;
+
+    // Ambil sesi berdasarkan kode
+    $session = AttendanceSession::where('code', $kode)->first();
+
+    if (!$session) {
+        return response()->json([
+            'status' => 'invalid',
+            'message' => 'Kode absensi tidak ditemukan.'
+        ], 404);
+    }
+
+    // Cek tanggal = hari ini
+    if ($session->tanggal !== now()->toDateString()) {
+        return response()->json([
+            'status' => 'invalid_date',
+            'message' => 'Kode absensi bukan untuk hari ini.'
+        ], 403);
+    }
+
+    // Cek waktu sekarang dalam range
+    $now = now()->format('H:i:s');
+    if ($now < $session->jam_mulai || $now > $session->jam_selesai) {
+        return response()->json([
+            'status' => 'invalid_time',
+            'message' => 'Waktu absen belum dibuka atau sudah ditutup.',
+            'debug_now' => $now,
+            'debug_mulai' => $session->jam_mulai,
+            'debug_selesai' => $session->jam_selesai,
+        ]);
+    }
+
+    // Cek apakah siswa sudah absen
+    $sudahAbsen = AttendanceRecord::where('session_id', $session->id)
+        ->where('user_id', $userId)
+        ->exists();
+
+    if ($sudahAbsen) {
+        return response()->json([
+            'status' => 'already_absent',
+            'message' => 'Kamu sudah absen untuk sesi ini.'
+        ], 409);
+    }
+
+    // Kalau semua valid
+    return response()->json([
+        'status' => 'valid',
+        'message' => 'Kode valid dan sesi aktif.',
+        'session_id' => $session->id,
+        'kelas' => $session->kelas,
+        'jam_mulai' => $session->jam_mulai,
+        'jam_selesai' => $session->jam_selesai,
+    ]);
+}
+public function submitAbsen(Request $request)
+{
+    $request->validate([
+        'session_id' => 'required|integer',
+        'user_id' => 'required|integer',
+        // status tidak perlu dikirim dari frontend
+    ]);
+
+    // Cek apakah sudah absen
+    $existing = AttendanceRecord::where('session_id', $request->session_id)
+        ->where('user_id', $request->user_id)
+        ->first();
+
+    if ($existing) {
+        return response()->json([
+            'status' => 'already_absent',
+            'message' => 'Kamu sudah absen sebelumnya.'
+        ], 409);
+    }
+
+    // Simpan dengan status otomatis "hadir"
+    $record = AttendanceRecord::create([
+        'session_id' => $request->session_id,
+        'user_id' => $request->user_id,
+        'status' => 'hadir', // <--- langsung hardcoded di backend
+        'waktu_absen' => now(),
+    ]);
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Absensi berhasil dicatat.',
+        'data' => $record
+    ]);
+}
+
+
     
 }
