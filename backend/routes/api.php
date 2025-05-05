@@ -130,3 +130,78 @@ Route::middleware(['auth:sanctum', 'role:guru'])->get('/teacher/profile', [Teach
 Route::middleware(['auth:sanctum', 'role:guru'])->group(function () {
     Route::post('/teacher/update-photo', [TeacherController::class, 'updatePhoto']);
 });
+
+use Illuminate\Support\Facades\Password;
+
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
+use App\Mail\ResetOtpMail;
+use App\Models\User;
+
+Route::post('/forgot-password', function (Request $request) {
+    $request->validate(['email' => 'required|email']);
+
+    $user = \App\Models\User::where('email', $request->email)->first();
+
+    if (!$user) {
+        return response()->json(['status' => 'error', 'message' => 'Email tidak ditemukan.']);
+    }
+
+    $otp = random_int(100000, 999999); // 👈 OTP 6 digit
+
+    $user->update([
+        'reset_otp' => $otp,
+        'reset_otp_expires_at' => now()->addMinutes(10),
+    ]);
+
+    \Mail::to($user->email)->send(new \App\Mail\ResetOtpMail($otp));
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Kode OTP berhasil dikirim ke email kamu.'
+    ]);
+});
+
+
+
+
+
+
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Auth\Events\PasswordReset;
+
+Route::post('/reset-password', function (Request $request) {
+    $request->validate([
+        'email' => 'required|email',
+        'otp' => 'required',
+        'password' => 'required|min:8|confirmed',
+    ]);
+
+    $user = \App\Models\User::where('email', $request->email)->first();
+
+    if (!$user || $user->reset_otp !== $request->otp) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'OTP salah atau tidak valid.'
+        ], 400);
+    }
+
+    if ($user->reset_otp_expires_at < now()) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'OTP sudah kadaluarsa.'
+        ], 400);
+    }
+
+    $user->update([
+        'password' => Hash::make($request->password),
+        'reset_otp' => null,
+        'reset_otp_expires_at' => null,
+    ]);
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Password berhasil direset.'
+    ]);
+});
+

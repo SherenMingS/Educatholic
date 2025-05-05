@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'reset_password.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   @override
@@ -6,44 +9,60 @@ class ForgotPasswordPage extends StatefulWidget {
 }
 
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
-  final TextEditingController _emailController = TextEditingController();
+  final _emailController = TextEditingController();
+  bool _isLoading = false;
 
-  Future<void> _sendResetLink() async {
-    if (_emailController.text.isEmpty) {
+  Future<void> _sendOtp() async {
+    final email = _emailController.text.trim();
+
+    if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Masukkan email terlebih dahulu!")),
+        SnackBar(content: Text("Email tidak boleh kosong")),
       );
       return;
     }
 
-    // Simulasi permintaan reset password (nanti bisa dihubungkan ke API backend)
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-          content: Text("Link reset password telah dikirim ke email Anda!")),
+    setState(() => _isLoading = true);
+
+    final response = await http.post(
+      Uri.parse('http://127.0.0.1:8000/api/forgot-password'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email}),
     );
 
-    // Kembali ke halaman login setelah beberapa detik
-    Future.delayed(Duration(seconds: 2), () {
-      Navigator.pop(context);
-    });
+    setState(() => _isLoading = false);
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200 && data['status'] == 'success') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("OTP berhasil dikirim ke email kamu.")),
+      );
+
+      // Arahkan ke halaman reset OTP
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ResetPasswordOtpPage(),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(data['message'] ?? 'Gagal mengirim OTP')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Lupa Password"),
-        backgroundColor: Colors.blue,
-      ),
+      appBar: AppBar(title: Text("Lupa Password")),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Text(
-              "Masukkan email Anda untuk mendapatkan link reset password.",
-              textAlign: TextAlign.center,
+              "Masukkan email kamu untuk menerima kode OTP.",
               style: TextStyle(fontSize: 16),
             ),
             SizedBox(height: 20),
@@ -51,20 +70,16 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               controller: _emailController,
               decoration: InputDecoration(
                 labelText: "Email",
-                prefixIcon: Icon(Icons.email, color: Colors.blue),
                 border: OutlineInputBorder(),
               ),
+              keyboardType: TextInputType.emailAddress,
             ),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: _sendResetLink,
-              child: Text("Kirim Link Reset",
-                  style: TextStyle(color: Colors.white)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-              ),
-            ),
+              onPressed: _isLoading ? null : _sendOtp,
+              child:
+                  _isLoading ? CircularProgressIndicator() : Text("Kirim OTP"),
+            )
           ],
         ),
       ),

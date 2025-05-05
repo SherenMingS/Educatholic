@@ -20,6 +20,8 @@ class User extends Authenticatable
         'role',
         'kelas', // Tambahkan ini supaya bisa disimpan
         'photo',
+        'reset_otp',               // 👈 ini
+        'reset_otp_expires_at', 
     ];
 
     protected $hidden = [

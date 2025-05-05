@@ -7,7 +7,6 @@ import 'dashboard_siswa.dart';
 import 'dashboard_guru.dart';
 import 'register.dart';
 import 'forgot_password.dart';
-import 'pilihkelas_guru.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -25,33 +24,22 @@ class _LoginScreenState extends State<LoginScreen> {
     _checkLoginStatus();
   }
 
-  // Cek apakah user sudah login sebelumnya
   void _checkLoginStatus() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('token');
     String? role = prefs.getString('role');
-    String? kelas =
-        prefs.getString('kelas'); // Pastikan kelas siswa disimpan dengan benar
-
-    print("Token: $token | Role: $role | Kelas: $kelas"); // Debugging
 
     if (token != null) {
       if (role == "siswa") {
         Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (context) => DashboardSiswa()));
+            context, MaterialPageRoute(builder: (_) => DashboardSiswa()));
       } else if (role == "guru") {
-        if (kelas == null) {
-          Navigator.pushReplacement(context,
-              MaterialPageRoute(builder: (context) => PilihKelasPage()));
-        } else {
-          Navigator.pushReplacement(context,
-              MaterialPageRoute(builder: (context) => DashboardGuru()));
-        }
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (_) => DashboardGuru()));
       }
     }
   }
 
-  // Fungsi login
   Future<void> _login() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -60,13 +48,10 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
-    final url = Uri.parse('http://127.0.0.1:8000/api/login');
     final response = await http.post(
-      url,
+      Uri.parse('http://127.0.0.1:8000/api/login'),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "email": _emailController.text,
@@ -74,54 +59,33 @@ class _LoginScreenState extends State<LoginScreen> {
       }),
     );
 
-    setState(() {
-      _isLoading = false;
-    });
+    setState(() => _isLoading = false);
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       final token = data['access_token'];
       final role = data['role'];
-      final kelas = data.containsKey('kelas') ? data['kelas'] : null;
+      final kelas = data['kelas'];
+      final userId = data['user']['id'];
 
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', token);
       await prefs.setString('role', role);
-      if (kelas != null) {
-        await prefs.setString('kelas', kelas); // Simpan kelas siswa/guru
+      await prefs.setInt('user_id', userId);
+
+      if (role == 'siswa') {
+        await prefs.setString('kelas', kelas);
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (_) => DashboardSiswa()));
+      } else if (role == 'guru') {
+        await prefs.setString('kelas_guru', kelas);
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (_) => DashboardGuru()));
       }
-
-      // ✅ Tambahkan baris ini untuk simpan user_id
-      
-      await prefs.setInt('user_id', data['user']['id']);
-      print(">> USER ID DISIMPAN: ${data['user']['id']}");
-
-      final checkPrefs = await SharedPreferences.getInstance();
-      print(">> CEK USER ID DARI PREFS: ${checkPrefs.getInt('user_id')}");
-
-      // Debugging
-      print("Token yang disimpan: $token");
-      print("Role yang disimpan: $role");
-      print("Kelas yang disimpan: $kelas");
-      print("User ID yang disimpan: ${data['user']['id']}");
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Login Berhasil!")),
       );
-
-      // Arahkan berdasarkan role
-      if (role == "siswa") {
-        Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (context) => DashboardSiswa()));
-      } else if (role == "guru") {
-        if (kelas == null) {
-          Navigator.pushReplacement(context,
-              MaterialPageRoute(builder: (context) => PilihKelasPage()));
-        } else {
-          Navigator.pushReplacement(context,
-              MaterialPageRoute(builder: (context) => DashboardGuru()));
-        }
-      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Login Gagal! Cek email & password.")),
@@ -136,7 +100,6 @@ class _LoginScreenState extends State<LoginScreen> {
         padding: const EdgeInsets.all(20.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -154,7 +117,7 @@ class _LoginScreenState extends State<LoginScreen> {
               controller: _emailController,
               decoration: InputDecoration(
                 labelText: "Email",
-                prefixIcon: Icon(Icons.email, color: Colors.blue),
+                prefixIcon: Icon(Icons.email),
                 border: OutlineInputBorder(),
               ),
             ),
@@ -164,7 +127,7 @@ class _LoginScreenState extends State<LoginScreen> {
               obscureText: true,
               decoration: InputDecoration(
                 labelText: "Password",
-                prefixIcon: Icon(Icons.lock, color: Colors.blue),
+                prefixIcon: Icon(Icons.lock),
                 border: OutlineInputBorder(),
               ),
             ),
@@ -173,11 +136,8 @@ class _LoginScreenState extends State<LoginScreen> {
               alignment: Alignment.centerRight,
               child: TextButton(
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => ForgotPasswordPage()),
-                  );
+                  Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => ForgotPasswordPage()));
                 },
                 child: Text("Lupa Password?",
                     style: TextStyle(color: Colors.blue)),
@@ -194,26 +154,21 @@ class _LoginScreenState extends State<LoginScreen> {
                 padding: EdgeInsets.symmetric(vertical: 15),
                 minimumSize: Size(double.infinity, 50),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                    borderRadius: BorderRadius.circular(8)),
               ),
             ),
             SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text("Belum punya akun?",
-                    style: TextStyle(color: Colors.black)),
+                Text("Belum punya akun?"),
                 TextButton(
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => RegisterPage()),
-                    );
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => RegisterPage()));
                   },
                   child: Text("Register",
-                      style: TextStyle(
-                          color: Colors.blue, fontWeight: FontWeight.bold)),
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ],
             ),

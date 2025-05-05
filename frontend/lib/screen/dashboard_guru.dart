@@ -2,17 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:frontend/screen/leaderboard_guru.dart';
 import 'package:frontend/screen/manageabsensi_guru.dart';
 import 'package:frontend/screen/materilist_guru.dart';
-import 'package:frontend/screen/profile_guru.dart'; // Import halaman profile
+import 'package:frontend/screen/profile_guru.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../controllers/dashboard_controller.dart';
 import 'materi_guru.dart';
-import 'editmateri_guru.dart';
-import 'pilihkelas_guru.dart';
-import 'studentlist_guru.dart';
 import 'quizlist_guru.dart';
-import 'package:frontend/screen/listabsensi_guru.dart'; // Ensure this file contains the ListAbsensiGuruPage class
-import 'package:frontend/screen/createabsensi_guru.dart';
+import 'studentlist_guru.dart';
+import 'listabsensi_guru.dart';
+import 'createabsensi_guru.dart';
 
 class DashboardGuru extends StatefulWidget {
   @override
@@ -21,31 +19,87 @@ class DashboardGuru extends StatefulWidget {
 
 class _DashboardGuruState extends State<DashboardGuru> {
   final DashboardController controller = Get.put(DashboardController());
-  int _selectedIndex = 1; // Home sebagai default
+  int _selectedIndex = 1;
   String? _kelasGuru;
+  bool _dialogSudahDitampilkan = false;
 
   @override
   void initState() {
     super.initState();
-    _fetchData();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _fetchData();
+      if (!_dialogSudahDitampilkan &&
+          (_kelasGuru == null ||
+              _kelasGuru!.isEmpty ||
+              _kelasGuru == 'Belum dipilih' ||
+              _kelasGuru!.startsWith('['))) {
+        _dialogSudahDitampilkan = true;
+        await _showKelasDialog();
+      }
+    });
   }
 
-  void _fetchData() async {
+  Future<void> _fetchData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('token');
     String? kelas = prefs.getString('kelas_guru');
-    setState(() {
+    if (kelas == null || kelas.isEmpty || kelas.startsWith('[')) {
+      _kelasGuru = "Belum dipilih";
+    } else {
       _kelasGuru = kelas;
-    });
+    }
+    setState(() {});
 
+    String? token = prefs.getString('token');
     if (token != null) {
       controller.fetchDashboardGuru(token);
     }
   }
 
+  Future<void> _showKelasDialog() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text("Pilih Kelas"),
+        content: Text("Silakan pilih kelas yang ingin Anda kelola:"),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await prefs.setString('kelas_guru', '8A');
+              setState(() {
+                _kelasGuru = '8A';
+              });
+              Navigator.pop(context);
+            },
+            child: Text("Kelas 8A"),
+          ),
+          TextButton(
+            onPressed: () async {
+              await prefs.setString('kelas_guru', '8B');
+              setState(() {
+                _kelasGuru = '8B';
+              });
+              Navigator.pop(context);
+            },
+            child: Text("Kelas 8B"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _changeClass() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('kelas_guru');
+    setState(() {
+      _kelasGuru = "Belum dipilih";
+    });
+    await _showKelasDialog();
+  }
+
   void _onItemTapped(int index) {
     if (index == 2) {
-      // Kalau klik icon Profile
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => ProfileGuruPage()),
@@ -55,16 +109,6 @@ class _DashboardGuruState extends State<DashboardGuru> {
         _selectedIndex = index;
       });
     }
-  }
-
-  Future<void> _changeClass() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.remove('kelas_guru');
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => PilihKelasPage()),
-    );
   }
 
   @override
@@ -123,10 +167,8 @@ class _DashboardGuruState extends State<DashboardGuru> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "Selamat Datang",
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
+              Text("Selamat Datang",
+                  style: TextStyle(color: Colors.white, fontSize: 16)),
               Obx(() => Text(
                     controller.name.value,
                     style: TextStyle(
@@ -137,7 +179,7 @@ class _DashboardGuruState extends State<DashboardGuru> {
                   )),
               SizedBox(height: 5),
               Text(
-                "Kelas Aktif: ${_kelasGuru ?? 'Belum dipilih'}",
+                "Kelas Aktif: ${_formatKelasAktif(_kelasGuru)}",
                 style: TextStyle(color: Colors.white, fontSize: 14),
               ),
             ],
@@ -154,6 +196,16 @@ class _DashboardGuruState extends State<DashboardGuru> {
         ),
       ],
     );
+  }
+
+  String _formatKelasAktif(String? kelas) {
+    if (kelas == null ||
+        kelas.isEmpty ||
+        kelas == 'Belum dipilih' ||
+        kelas.startsWith('[')) {
+      return 'Belum dipilih';
+    }
+    return kelas;
   }
 
   Widget _buildAttendanceStats() {
@@ -209,7 +261,6 @@ class _DashboardGuruState extends State<DashboardGuru> {
           SharedPreferences prefs = await SharedPreferences.getInstance();
           String? token = prefs.getString('token');
           String? kelas = prefs.getString('kelas_guru');
-
           if (kelas != null && token != null) {
             Navigator.push(
               context,
@@ -228,7 +279,6 @@ class _DashboardGuruState extends State<DashboardGuru> {
           SharedPreferences prefs = await SharedPreferences.getInstance();
           String? token = prefs.getString('token');
           String? kelas = prefs.getString('kelas_guru');
-
           if (kelas != null && token != null) {
             Navigator.push(
               context,
@@ -292,7 +342,7 @@ class _DashboardGuruState extends State<DashboardGuru> {
         SizedBox(height: 5),
         LinearProgressIndicator(
           value: value,
-          backgroundColor: Colors.blue,
+          backgroundColor: Colors.blue.shade100,
           valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
         ),
         SizedBox(height: 10),
