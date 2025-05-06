@@ -108,13 +108,6 @@ class _KelolaMateriPageState extends State<KelolaMateriPage> {
   }
 
   Future<void> _uploadMateri() async {
-    if (_selectedFileBytes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Silakan pilih file terlebih dahulu!")),
-      );
-      return;
-    }
-
     try {
       var request = http.MultipartRequest(
         'POST',
@@ -135,16 +128,22 @@ class _KelolaMateriPageState extends State<KelolaMateriPage> {
         request.headers['Authorization'] = 'Bearer $token';
       }
 
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'file',
-          _selectedFileBytes!,
-          filename: _selectedFileName,
-        ),
-      );
+      // 🟡 Tambahkan hanya jika file ada
+      if (_selectedFileBytes != null && _selectedFileName != null) {
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            _selectedFileBytes!,
+            filename: _selectedFileName,
+          ),
+        );
+      }
 
       var response = await request.send();
       var responseBody = await response.stream.bytesToString();
+
+      print("📦 Status Code: ${response.statusCode}");
+      print("📨 Response Body: $responseBody");
 
       if (response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -152,7 +151,7 @@ class _KelolaMateriPageState extends State<KelolaMateriPage> {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Gagal mengunggah materi.")),
+          SnackBar(content: Text("Gagal mengunggah materi: $responseBody")),
         );
       }
     } catch (e) {
@@ -287,7 +286,9 @@ class _KelolaMateriPageState extends State<KelolaMateriPage> {
                   onPressed: _uploadMateri,
                   child: Text("Upload", style: TextStyle(fontSize: 18)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.blue, // warna teks
+                    side: BorderSide(color: Colors.blue),
                     padding: EdgeInsets.symmetric(horizontal: 40, vertical: 12),
                   ),
                 ),

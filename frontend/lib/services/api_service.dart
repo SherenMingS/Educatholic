@@ -298,4 +298,24 @@ class ApiService {
       throw Exception('Gagal mengambil leaderboard');
     }
   }
+
+  static Future<bool> markMateriAsRead(int materiId, String token) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/materi/read/$materiId'), // ✅ Tanpa /api lagi
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+      },
+    );
+
+    print("STATUS: ${response.statusCode}");
+    print("BODY: ${response.body}");
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['status'] == 'success' || data['status'] == 'already_read';
+    } else {
+      return false;
+    }
+  }
 }

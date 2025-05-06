@@ -6,18 +6,19 @@ use Illuminate\Http\Request;
 use App\Models\Quiz;
 use App\Models\QuizQuestion;
 use App\Models\QuizResult;
-use App\Models\Badge;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth; 
+use App\Models\MateriRead;
 
 class QuizController extends Controller
 {
-    // ✅ Fungsi untuk membuat kuis
+    // ✅ CREATE QUIZ
     public function createQuiz(Request $request)
     {
         $request->validate([
             'title' => 'required|string|max:255',
             'kelas' => 'required|string|max:10',
+            'materi_id' => 'required|exists:materi,id',
             'duration' => 'nullable|integer|min:1',
             'deadline' => 'nullable|date',
             'questions' => 'required|array|min:1',
@@ -32,14 +33,14 @@ class QuizController extends Controller
         $quiz = Quiz::create([
             'title' => $request->title,
             'kelas' => $request->kelas,
+            'materi_id' => $request->materi_id,
             'created_by' => auth()->user()->id,
             'duration' => $request->duration,
             'deadline' => $request->deadline,
             'quiz_code' => Str::random(6),
         ]);
 
-        $totalQuestions = count($request->questions);
-        $scorePerQuestion = $totalQuestions > 0 ? round(100 / $totalQuestions, 2) : 0;
+        $scorePerQuestion = round(100 / count($request->questions), 2);
 
         foreach ($request->questions as $q) {
             QuizQuestion::create([
@@ -58,34 +59,31 @@ class QuizController extends Controller
             'status' => 'success',
             'message' => 'Quiz berhasil dibuat',
             'quiz' => $quiz,
-            'score_per_question' => $scorePerQuestion,
         ]);
     }
 
-    // ✅ Fungsi untuk mendapatkan semua kuis (untuk guru)
+    // ✅ GET ALL QUIZZES (GURU)
     public function getAllQuizzes(Request $request)
     {
         $kelasGuru = $request->query('kelas');
 
         $quizzes = Quiz::where('created_by', auth()->user()->id)
-                        ->when($kelasGuru, function ($query) use ($kelasGuru) {
-                            return $query->where('kelas', $kelasGuru);
-                        })
-                        ->with('questions')
-                        ->withCount('questions')
-                        ->orderBy('created_at', 'desc')
-                        ->get();
+            ->when($kelasGuru, fn($q) => $q->where('kelas', $kelasGuru))
+            ->with('questions')
+            ->withCount('questions')
+            ->orderBy('created_at', 'desc')
+            ->get();
 
         return response()->json([
             'status' => 'success',
-            'data' => $quizzes
+            'data' => $quizzes,
         ]);
     }
 
-    // ✅ Fungsi untuk mendapatkan detail kuis
+    // ✅ GET QUIZ DETAIL
     public function getQuizDetail($id)
     {
-        $quiz = Quiz::with('questions')->where('id', $id)->first();
+        $quiz = Quiz::with('questions')->find($id);
 
         if (!$quiz) {
             return response()->json(['message' => 'Quiz tidak ditemukan'], 404);
@@ -93,30 +91,55 @@ class QuizController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data' => $quiz
+            'data' => $quiz,
         ]);
     }
 
-    // ✅ Fungsi untuk mendapatkan daftar kuis berdasarkan kelas (untuk siswa)
+    // ✅ GET QUIZ FOR STUDENTS BY KELAS
+    // public function getQuizzesForStudents(Request $request)
+    // {
+    //     $kelas = $request->query('kelas');
+
+    //     $quizzes = Quiz::where('kelas', $kelas)
+    //         ->withCount('questions')
+    //         ->orderBy('created_at', 'desc')
+    //         ->get();
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'data' => $quizzes,
+    //     ]);
+    // }
+
     public function getQuizzesForStudents(Request $request)
-    {
-        $kelas = $request->query('kelas');
+{
+    $kelas = $request->query('kelas');
+    $userId = Auth::id();
 
-        $quizzes = Quiz::where('kelas', $kelas)
-                   ->withCount('questions')
-                   ->orderBy('created_at', 'desc')
-                   ->get();
+    $quizzes = Quiz::where('kelas', $kelas)
+        ->withCount('questions')
+        ->orderBy('created_at', 'desc')
+        ->get();
 
-        return response()->json([
-            'status' => 'success',
-            'data' => $quizzes
-        ]);
+    foreach ($quizzes as $quiz) {
+        $quiz->is_read = false;
+        if ($quiz->materi_id) {
+            $quiz->is_read = MateriRead::where('user_id', $userId)
+                ->where('materi_id', $quiz->materi_id)
+                ->exists();
+        }
     }
 
-    // ✅ Fungsi untuk mendapatkan kuis tertentu berdasarkan ID (untuk siswa)
+    return response()->json([
+        'status' => 'success',
+        'data' => $quizzes,
+    ]);
+}
+
+    // ✅ GET QUIZ FOR STUDENT BY ID
     public function getQuizForStudent($id)
     {
-        $quiz = Quiz::with('questions')->where('id', $id)->first();
+        $quiz = Quiz::with('questions')->find($id);
 
         if (!$quiz) {
             return response()->json(['message' => 'Quiz tidak ditemukan'], 404);
@@ -124,11 +147,11 @@ class QuizController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data' => $quiz
+            'data' => $quiz,
         ]);
     }
 
-    // ✅ Fungsi untuk submit jawaban kuis
+    // ✅ SUBMIT QUIZ
     public function submitQuiz(Request $request, $id)
     {
         $request->validate([
@@ -142,45 +165,44 @@ class QuizController extends Controller
             return response()->json(['message' => 'Quiz tidak ditemukan'], 404);
         }
 
-        $correctAnswers = 0;
-        $totalQuestions = count($request->answers);
+        $correct = 0;
+        $total = count($request->answers);
 
         foreach ($request->answers as $answer) {
             $question = QuizQuestion::find($answer['question_id']);
-            if ($question->correct_answer === $answer['selected_answer']) {
-                $correctAnswers++;
+            if ($question && $question->correct_answer === $answer['selected_answer']) {
+                $correct++;
             }
         }
 
-        $score = round(($correctAnswers / $totalQuestions) * 100, 2);
+        $score = round(($correct / $total) * 100, 2);
 
-        // ✅ Simpan hasil kuis ke database (quiz_results)
         QuizResult::create([
             'user_id' => auth()->id(),
             'quiz_id' => $id,
             'score' => $score,
-            'correct_answers' => $correctAnswers,
-            'total_questions' => $totalQuestions
+            'correct_answers' => $correct,
+            'total_questions' => $total,
         ]);
 
         return response()->json([
             'status' => 'success',
             'message' => 'Jawaban berhasil disimpan!',
             'score' => $score,
-            'correct_answers' => $correctAnswers,
-            'total_questions' => $totalQuestions
+            'correct_answers' => $correct,
+            'total_questions' => $total,
         ]);
     }
 
-    // ✅ Fungsi untuk update kuis
+    // ✅ UPDATE QUIZ (TERMASUK MATERI_ID)
     public function updateQuiz(Request $request, $id)
     {
         $request->validate([
             'title' => 'required|string|max:255',
             'kelas' => 'required|string|max:10',
+            'materi_id' => 'required|exists:materi,id',
             'duration' => 'nullable|integer|min:1',
             'deadline' => 'nullable|date',
-            'questions' => 'nullable|array|min:1',
         ]);
 
         $quiz = Quiz::where('id', $id)->where('created_by', auth()->user()->id)->first();
@@ -191,6 +213,7 @@ class QuizController extends Controller
         $quiz->update([
             'title' => $request->title,
             'kelas' => $request->kelas,
+            'materi_id' => $request->materi_id,
             'duration' => $request->duration,
             'deadline' => $request->deadline,
         ]);
@@ -198,15 +221,14 @@ class QuizController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Quiz berhasil diperbarui',
-            'quiz' => $quiz
+            'quiz' => $quiz,
         ]);
     }
 
-    // ✅ Fungsi untuk menghapus kuis
+    // ✅ DELETE QUIZ
     public function deleteQuiz($id)
     {
         $quiz = Quiz::where('id', $id)->where('created_by', auth()->user()->id)->first();
-
         if (!$quiz) {
             return response()->json(['message' => 'Quiz tidak ditemukan atau tidak memiliki akses'], 403);
         }
@@ -216,7 +238,7 @@ class QuizController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Quiz berhasil dihapus'
+            'message' => 'Quiz berhasil dihapus',
         ]);
     }
 }

@@ -185,64 +185,86 @@ class _MateriPageState extends State<MateriPage> {
   }
 
   Widget _buildMateriCard(dynamic materi) {
+    final bool isTayang = materi['status'] == 'tayang';
+
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => MateriDetailPage(
-              materiId: materi['id'],
-              materiJudul: materi['judul'],
-            ),
+      onTap: isTayang
+          ? () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => MateriDetailPage(
+                    materiId: materi['id'],
+                    materiJudul: materi['judul'],
+                  ),
+                ),
+              );
+            }
+          : null,
+      child: Opacity(
+        opacity: isTayang ? 1.0 : 0.5, // Jika belum tayang, tampil transparan
+        child: Card(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+                color: isTayang ? Colors.blue : Colors.orange, width: 1),
           ),
-        );
-      },
-      child: Card(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: Colors.blue, width: 1),
-        ),
-        margin: const EdgeInsets.only(bottom: 12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(8),
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: isTayang ? Colors.blue : Colors.orange,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.menu_book, color: Colors.white),
                 ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      materi["judul"],
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        materi["judul"],
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(5),
-                      child: const LinearProgressIndicator(
-                        value: 0.3,
-                        backgroundColor: Colors.black,
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(Colors.yellow),
-                        minHeight: 6,
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isTayang ? Colors.green : Colors.orange,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              isTayang ? "✅ Sudah Tayang" : "🕓 Belum Tayang",
+                              style:
+                                  TextStyle(fontSize: 12, color: Colors.white),
+                            ),
+                          ),
+                          SizedBox(width: 10),
+                          Text(
+                            "Tayang: ${materi['tanggal_tayang']}",
+                            style:
+                                TextStyle(fontSize: 12, color: Colors.black54),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

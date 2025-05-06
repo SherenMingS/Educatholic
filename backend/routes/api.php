@@ -47,18 +47,22 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 Route::middleware(['auth:sanctum'])->get('/user/profile', [UserController::class, 'getUserProfile']);
+use App\Http\Controllers\MateriReadController;
 
 
-// **Materi Routes** (Hanya guru yang bisa menambah, mengedit, atau menghapus materi)
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/materi', [MateriController::class, 'index']);
-    Route::get('/materi/{id}', [MateriController::class, 'show']); // Ambil detail materi
+    Route::get('/materi/{id}', [MateriController::class, 'show']);
+
+    Route::post('/materi/read/{id}', [MateriReadController::class, 'markAsRead']);
 
     Route::post('/materi', [MateriController::class, 'store'])->middleware('role:guru');
     Route::put('/materi/{id}', [MateriController::class, 'update'])->middleware('role:guru');
     Route::post('/materi/update-file/{id}', [MateriController::class, 'updateWithFile'])->middleware('role:guru');
     Route::delete('/materi/{id}', [MateriController::class, 'destroy'])->middleware('role:guru');
 });
+
+Route::get('/materi/read/list', [MateriReadController::class, 'getReadMateri'])->middleware('auth:sanctum');
 
 
 use App\Http\Controllers\QuizController;

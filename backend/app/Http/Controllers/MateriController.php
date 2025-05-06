@@ -8,17 +8,26 @@ use App\Models\Materi;
 class MateriController extends Controller
 {
     public function index(Request $request)
-{
-    $kelas = $request->query('kelas'); // Ambil kelas dari query string
-
-    if ($kelas) {
-        $materi = Materi::where('kelas', $kelas)->get(); // Filter berdasarkan kelas
-    } else {
-        $materi = Materi::all(); // Jika tidak ada filter, tampilkan semua
+    {
+        $kelas = $request->query('kelas');
+        $today = now()->toDateString();
+    
+        $query = Materi::query();
+        if ($kelas) {
+            $query->where('kelas', $kelas);
+        }
+    
+        $materi = $query->orderBy('tanggal_tayang', 'desc')->get();
+    
+        // Tambahkan status tayang
+        $materi->map(function ($item) use ($today) {
+            $item->status = $item->tanggal_tayang <= $today ? 'tayang' : 'belum_tayang';
+            return $item;
+        });
+    
+        return response()->json(['materi' => $materi], 200);
     }
-
-    return response()->json(['materi' => $materi], 200);
-}
+    
     public function store(Request $request)
     {
         try {

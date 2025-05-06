@@ -4,8 +4,10 @@ class Quiz {
   final String kelas;
   final int duration;
   final String? deadline;
+  final int? materiId; // ID materi terkait kuis
   final int questionCount;
-  final List<Question> questions; // Tambahkan daftar soal
+  final List<Question> questions;
+  final bool isRead; // Apakah materi sudah dibaca
 
   Quiz({
     required this.id,
@@ -13,8 +15,11 @@ class Quiz {
     required this.kelas,
     required this.duration,
     this.deadline,
+    this.materiId,
     required this.questionCount,
     required this.questions,
+    required this.isRead,
+    // default true (jika backend belum kirim)
   });
 
   factory Quiz.fromJson(Map<String, dynamic> json) {
@@ -24,12 +29,14 @@ class Quiz {
       kelas: json['kelas'],
       duration: json['duration'],
       deadline: json['deadline'],
+      materiId: json['materi_id'],
       questionCount: json['questions_count'] ?? 0,
       questions: json['questions'] != null
           ? (json['questions'] as List<dynamic>)
               .map((q) => Question.fromJson(q))
               .toList()
           : [],
+      isRead: json['is_read'] ?? false, // parsing dari backend
     );
   }
 }

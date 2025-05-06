@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:html' as html;
 
 class MateriDetailPage extends StatefulWidget {
   final int materiId;
@@ -35,9 +39,7 @@ class _MateriDetailPageState extends State<MateriDetailPage> {
           isLoading = false;
         });
       } catch (e) {
-        setState(() {
-          isLoading = false;
-        });
+        setState(() => isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Gagal memuat materi: $e")),
         );
@@ -45,10 +47,32 @@ class _MateriDetailPageState extends State<MateriDetailPage> {
     }
   }
 
+  void _openModul(String filePath) {
+    final url = 'http://127.0.0.1:8000/storage/$filePath';
+    if (kIsWeb) {
+      html.window.open(url, '_blank');
+    } else {
+      launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    }
+  }
+
+  Future<void> _markAsRead() async {
+    if (token == null) return;
+
+    final success = await ApiService.markMateriAsRead(widget.materiId, token!);
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Materi ditandai sebagai sudah dibaca")),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Gagal menyimpan progress")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // ✅ Ambil poin-poin & pisahkan berdasarkan koma
-    // ✅ Ambil poin-poin dari API dengan format yang sesuai
     List<String> poinPoinList = [];
     if (materiDetail != null && materiDetail!['poin_poin'] != null) {
       poinPoinList = List<String>.from(materiDetail!['poin_poin']);
@@ -68,26 +92,19 @@ class _MateriDetailPageState extends State<MateriDetailPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      /// **Gambar Materi (Jika Ada)**
                       Image.asset(
                         'assets/dbsiswa.png',
                         width: double.infinity,
                         height: 200,
                         fit: BoxFit.cover,
                       ),
-
                       SizedBox(height: 16),
-
-                      /// **Judul Materi**
                       Text(
                         materiDetail!['judul'],
                         style: TextStyle(
                             fontSize: 24, fontWeight: FontWeight.bold),
                       ),
-
-                      SizedBox(height: 8),
-
-                      /// **Poin-Poin Materi (Jika Ada)**
+                      SizedBox(height: 12),
                       if (poinPoinList.isNotEmpty)
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -98,17 +115,11 @@ class _MateriDetailPageState extends State<MateriDetailPage> {
                                   fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                             SizedBox(height: 8),
-
-                            /// **Tampilkan Sebagai Tombol atau Badge**
                             Wrap(
                               spacing: 8,
                               children: poinPoinList.map((poin) {
                                 return ElevatedButton(
-                                  onPressed: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text("Poin: $poin")),
-                                    );
-                                  },
+                                  onPressed: () {},
                                   child: Text(poin),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.blue,
@@ -119,10 +130,7 @@ class _MateriDetailPageState extends State<MateriDetailPage> {
                             ),
                           ],
                         ),
-
                       SizedBox(height: 16),
-
-                      /// **Ayat yang Perlu Direnungkan**
                       if (materiDetail!['ayat'] != null &&
                           materiDetail!['isi_ayat'] != null)
                         Container(
@@ -132,7 +140,6 @@ class _MateriDetailPageState extends State<MateriDetailPage> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                               Text(
                                 materiDetail!['ayat'],
@@ -146,14 +153,47 @@ class _MateriDetailPageState extends State<MateriDetailPage> {
                             ],
                           ),
                         ),
-
+                      if (materiDetail!['file'] != null &&
+                          materiDetail!['file'].toString().isNotEmpty)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(height: 16),
+                            Text(
+                              "Modul Materi:",
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            SizedBox(height: 8),
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                _openModul(materiDetail!['file']);
+                              },
+                              icon: Icon(Icons.open_in_new),
+                              label: Text("Lihat Modul"),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orange,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
                       SizedBox(height: 16),
-
-                      /// **Isi Materi**
                       Text(
                         materiDetail!['deskripsi'] ?? "Tidak ada deskripsi",
                         style: TextStyle(fontSize: 16),
                         textAlign: TextAlign.justify,
+                      ),
+                      SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        icon: Icon(Icons.check_circle_outline),
+                        label: Text("Saya sudah baca"),
+                        onPressed: _markAsRead,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          minimumSize: Size(double.infinity, 48),
+                        ),
                       ),
                     ],
                   ),

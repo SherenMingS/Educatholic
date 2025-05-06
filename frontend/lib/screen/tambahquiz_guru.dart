@@ -18,6 +18,9 @@ class _AddQuizPageState extends State<AddQuizPage> {
   DateTime? selectedDeadline;
   List<Map<String, dynamic>> questions = [];
 
+  List<Map<String, dynamic>> materiList = [];
+  String? selectedMateriId;
+
   final List<String> classList = ['8A', '8B'];
 
   @override
@@ -28,10 +31,22 @@ class _AddQuizPageState extends State<AddQuizPage> {
 
   Future<void> _loadTokenAndClass() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      token = prefs.getString('token');
-      selectedClass = prefs.getString('kelas_guru'); // Ambil kelas aktif
-    });
+    token = prefs.getString('token');
+    selectedClass = prefs.getString('kelas_guru');
+    await _loadMateriList();
+  }
+
+  Future<void> _loadMateriList() async {
+    if (token == null || selectedClass == null) return;
+
+    try {
+      final materiData = await ApiService.getMateri(token!, selectedClass!);
+      setState(() {
+        materiList = List<Map<String, dynamic>>.from(materiData);
+      });
+    } catch (e) {
+      print("❌ Gagal mengambil materi: $e");
+    }
   }
 
   Future<void> _submitQuiz() async {
@@ -43,16 +58,15 @@ class _AddQuizPageState extends State<AddQuizPage> {
         return;
       }
 
-      // 🔥 Hitung skor setiap soal (100 / jumlah soal)
       double scorePerQuestion = 100 / questions.length;
       for (var q in questions) {
-        q["score"] =
-            scorePerQuestion.toStringAsFixed(2); // Simpan skor per soal
+        q["score"] = scorePerQuestion.toStringAsFixed(2);
       }
 
       Map<String, dynamic> quizData = {
         "title": titleController.text,
         "kelas": selectedClass,
+        "materi_id": selectedMateriId,
         "duration": int.tryParse(durationController.text) ?? 30,
         "deadline":
             deadlineController.text.isNotEmpty ? deadlineController.text : null,
@@ -75,15 +89,14 @@ class _AddQuizPageState extends State<AddQuizPage> {
 
   void _addQuestion() {
     setState(() {
-      questions = List.from(questions)
-        ..add({
-          "question": "",
-          "option_1": "",
-          "option_2": "",
-          "option_3": "",
-          "option_4": "",
-          "correct_answer": "A",
-        });
+      questions.add({
+        "question": "",
+        "option_1": "",
+        "option_2": "",
+        "option_3": "",
+        "option_4": "",
+        "correct_answer": "A",
+      });
     });
   }
 
@@ -93,7 +106,6 @@ class _AddQuizPageState extends State<AddQuizPage> {
     });
   }
 
-  // 🕒 Fungsi untuk memilih tanggal dan waktu deadline
   void _pickDeadline() async {
     DateTime? pickedDate = await showDatePicker(
       context: context,
@@ -151,8 +163,32 @@ class _AddQuizPageState extends State<AddQuizPage> {
                   items: classList.map((kelas) {
                     return DropdownMenuItem(value: kelas, child: Text(kelas));
                   }).toList(),
-                  onChanged: (value) => setState(() => selectedClass = value),
+                  onChanged: (value) {
+                    setState(() {
+                      selectedClass = value;
+                      selectedMateriId = null;
+                    });
+                    _loadMateriList(); // refresh materi saat ganti kelas
+                  },
                   validator: (value) => value == null ? "Pilih kelas" : null,
+                ),
+                SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  value: selectedMateriId,
+                  decoration:
+                      InputDecoration(labelText: "Pilih Materi Terkait"),
+                  items: materiList.map((materi) {
+                    return DropdownMenuItem(
+                      value: materi['id'].toString(),
+                      child: Text(materi['judul']),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      selectedMateriId = val;
+                    });
+                  },
+                  validator: (value) => value == null ? "Pilih materi" : null,
                 ),
                 SizedBox(height: 10),
                 TextFormField(

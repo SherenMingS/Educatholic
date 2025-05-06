@@ -18,7 +18,7 @@ class _StudentQuizListPageState extends State<StudentQuizListPage> {
   List<Quiz> quizzes = [];
   String? token;
   bool isLoading = true;
-  int _selectedIndex = 1; // Karena ini halaman Quiz (menu kedua)
+  int _selectedIndex = 1;
 
   @override
   void initState() {
@@ -47,6 +47,11 @@ class _StudentQuizListPageState extends State<StudentQuizListPage> {
         quizzes = quizzesList;
         isLoading = false;
       });
+
+      // Debug log
+      for (var q in quizzesList) {
+        print("${q.title} | isRead: ${q.isRead}");
+      }
     } catch (e) {
       setState(() => isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -103,8 +108,6 @@ class _StudentQuizListPageState extends State<StudentQuizListPage> {
           MaterialPageRoute(builder: (_) => ProfilePage()),
         );
         break;
-      default:
-        break;
     }
   }
 
@@ -130,32 +133,51 @@ class _StudentQuizListPageState extends State<StudentQuizListPage> {
   }
 
   Widget _buildQuizCard(Quiz quiz) {
+    final isLocked = !quiz.isRead;
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       elevation: 3,
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
-        leading: const Icon(Icons.assignment, color: Colors.blue),
+        leading: Icon(
+          isLocked ? Icons.lock : Icons.assignment,
+          color: isLocked ? Colors.grey : Colors.blue,
+        ),
         title: Text(
           quiz.title,
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
-          "Kelas: ${quiz.kelas} | ${quiz.questionCount ?? 0} Soal",
-          style: const TextStyle(fontSize: 14, color: Colors.black54),
+          "Kelas: ${quiz.kelas} | ${quiz.questionCount} Soal",
+          style: TextStyle(
+            fontSize: 14,
+            color: isLocked ? Colors.grey : Colors.black54,
+          ),
         ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 18),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => QuizPage(quizId: quiz.id)),
-          );
-        },
+        trailing: isLocked
+            ? const Icon(Icons.lock, color: Colors.grey)
+            : const Icon(Icons.arrow_forward_ios, size: 18),
+        onTap: isLocked
+            ? () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                        "❌ Materi belum dibaca. Harap baca materi terlebih dahulu."),
+                  ),
+                );
+              }
+            : () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => QuizPage(quizId: quiz.id)),
+                );
+              },
       ),
     );
   }
-  
 
   Widget _buildCurvedNavBar() {
     return CurvedNavigationBar(

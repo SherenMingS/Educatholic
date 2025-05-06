@@ -9,11 +9,15 @@ class Quiz extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['title', 'kelas', 'created_by', 'duration', 'deadline', 'quiz_code'];
+    protected $fillable = ['title', 'kelas', 'materi_id','created_by', 'duration', 'deadline', 'quiz_code'];
 
     public function questions()
     {
         return $this->hasMany(QuizQuestion::class, 'quiz_id', 'id');
     }
+    public function materi()
+{
+    return $this->belongsTo(Materi::class, 'materi_id');
+}
 }
 

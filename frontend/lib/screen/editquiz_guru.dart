@@ -23,7 +23,10 @@ class _EditQuizPageState extends State<EditQuizPage> {
   DateTime? selectedDeadline;
   List<Map<String, dynamic>> questions = [];
 
-  final List<String> classList = ['8A', '8B', '9A', '9B'];
+  final List<String> classList = ['8A', '8B'];
+
+  List<Map<String, dynamic>> materiList = [];
+  String? selectedMateriId;
 
   @override
   void initState() {
@@ -34,15 +37,28 @@ class _EditQuizPageState extends State<EditQuizPage> {
     deadlineController =
         TextEditingController(text: widget.quiz.deadline ?? '');
     selectedClass = widget.quiz.kelas;
+    selectedMateriId = widget.quiz.materiId?.toString();
     _loadToken();
   }
 
   Future<void> _loadToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      token = prefs.getString('token');
-    });
-    _loadQuestions(); // Panggil setelah token tersedia
+    token = prefs.getString('token');
+    await _loadMateriList();
+    _loadQuestions();
+  }
+
+  Future<void> _loadMateriList() async {
+    if (token == null || selectedClass == null) return;
+
+    try {
+      final materiData = await ApiService.getMateri(token!, selectedClass!);
+      setState(() {
+        materiList = List<Map<String, dynamic>>.from(materiData);
+      });
+    } catch (e) {
+      print("❌ Gagal mengambil materi: $e");
+    }
   }
 
   Future<void> _loadQuestions() async {
@@ -80,16 +96,15 @@ class _EditQuizPageState extends State<EditQuizPage> {
         return;
       }
 
-      // 🔥 Hitung skor setiap soal agar total tetap 100
       double scorePerQuestion = 100 / questions.length;
       for (var q in questions) {
-        q["score"] =
-            scorePerQuestion.toStringAsFixed(2); // Pastikan skor dibagi rata
+        q["score"] = scorePerQuestion.toStringAsFixed(2);
       }
 
       Map<String, dynamic> quizData = {
         "title": titleController.text,
         "kelas": selectedClass,
+        "materi_id": selectedMateriId,
         "duration": int.tryParse(durationController.text) ?? 30,
         "deadline":
             deadlineController.text.isNotEmpty ? deadlineController.text : null,
@@ -97,7 +112,6 @@ class _EditQuizPageState extends State<EditQuizPage> {
       };
 
       try {
-        // 🔥 Pastikan Flutter menggunakan UPDATE, bukan CREATE
         await ApiService.updateQuiz(widget.quiz.id, quizData, token!);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Quiz berhasil diperbarui")),
@@ -113,16 +127,15 @@ class _EditQuizPageState extends State<EditQuizPage> {
 
   void _addQuestion() {
     setState(() {
-      questions = List.from(questions)
-        ..add({
-          "id": null, // NULL karena ini soal baru
-          "question": "",
-          "option_1": "",
-          "option_2": "",
-          "option_3": "",
-          "option_4": "",
-          "correct_answer": "A",
-        });
+      questions.add({
+        "id": null,
+        "question": "",
+        "option_1": "",
+        "option_2": "",
+        "option_3": "",
+        "option_4": "",
+        "correct_answer": "A",
+      });
     });
   }
 
@@ -132,7 +145,6 @@ class _EditQuizPageState extends State<EditQuizPage> {
     });
   }
 
-  // 🕒 Fungsi untuk memilih tanggal dan waktu deadline
   void _pickDeadline() async {
     DateTime? pickedDate = await showDatePicker(
       context: context,
@@ -191,8 +203,32 @@ class _EditQuizPageState extends State<EditQuizPage> {
                   items: classList.map((kelas) {
                     return DropdownMenuItem(value: kelas, child: Text(kelas));
                   }).toList(),
-                  onChanged: (value) => setState(() => selectedClass = value),
+                  onChanged: (value) {
+                    setState(() {
+                      selectedClass = value;
+                      selectedMateriId = null;
+                    });
+                    _loadMateriList();
+                  },
                   validator: (value) => value == null ? "Pilih kelas" : null,
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  value: selectedMateriId,
+                  decoration:
+                      const InputDecoration(labelText: "Pilih Materi Terkait"),
+                  items: materiList.map((materi) {
+                    return DropdownMenuItem(
+                      value: materi['id'].toString(),
+                      child: Text(materi['judul']),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      selectedMateriId = val;
+                    });
+                  },
+                  validator: (value) => value == null ? "Pilih materi" : null,
                 ),
                 const SizedBox(height: 10),
                 TextFormField(
