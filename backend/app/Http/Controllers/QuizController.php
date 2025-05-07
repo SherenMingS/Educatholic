@@ -241,4 +241,6 @@ class QuizController extends Controller
             'message' => 'Quiz berhasil dihapus',
         ]);
     }
+
+
 }

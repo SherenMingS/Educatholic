@@ -209,3 +209,10 @@ Route::post('/reset-password', function (Request $request) {
     ]);
 });
 
+use App\Http\Controllers\ActivityLogController;
+
+Route::middleware('auth:sanctum')->get('/activity-logs', [ActivityLogController::class, 'getActivityLogs']);
+
+use App\Http\Controllers\QuizResultController;
+
+Route::middleware('auth:sanctum')->get('/check-quiz-attempted/{quizId}', [QuizResultController::class, 'checkIfAttempted']);

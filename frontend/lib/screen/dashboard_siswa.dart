@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/screen/ActivityLogPage_siswa.dart';
 import 'package:frontend/screen/absencode_siswa.dart';
 import 'package:frontend/screen/leaderboard_siswa.dart';
 import 'quizlist_siswa.dart';
@@ -250,7 +251,8 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
     );
   }
 
-  Widget _buildStats() {
+  
+Widget _buildStats() {
     return Column(
       children: [
         // 🔥 Tombol Absen Sekarang
@@ -277,7 +279,15 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
           ),
         ),
         const SizedBox(height: 12),
-        _statCard(Icons.history, "Riwayat Aktivitas Anda"),
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => ActivityLogPage()),
+            );
+          },
+          child: _statCard(Icons.history, "Riwayat Aktivitas Anda"),
+        ),
         _statCard(Icons.show_chart,
             "Rata-rata Skor Kuis ${controller.quizAverage.value}%"),
         Obx(() => _statCard(
@@ -285,7 +295,6 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
       ],
     );
   }
-
   Widget _statCard(IconData icon, String title) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),

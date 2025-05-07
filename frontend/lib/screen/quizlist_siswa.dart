@@ -47,11 +47,6 @@ class _StudentQuizListPageState extends State<StudentQuizListPage> {
         quizzes = quizzesList;
         isLoading = false;
       });
-
-      // Debug log
-      for (var q in quizzesList) {
-        print("${q.title} | isRead: ${q.isRead}");
-      }
     } catch (e) {
       setState(() => isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -108,7 +103,92 @@ class _StudentQuizListPageState extends State<StudentQuizListPage> {
           MaterialPageRoute(builder: (_) => ProfilePage()),
         );
         break;
+      default:
+        break;
     }
+  }
+
+  void _checkQuizStatus(int quizId) async {
+    try {
+      final result = await ApiService.checkQuizStatus(token!, quizId);
+
+      // Jika statusnya berhasil, lanjutkan ke halaman kuis
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => QuizPage(quizId: quizId)),
+      );
+    } catch (e) {
+      // Jika error, tampilkan dialog error
+      if (e.toString().contains('Anda sudah mengerjakan kuis ini')) {
+        _showQuizAlreadyCompletedDialog();
+      } else {
+        _showErrorDialog();
+      }
+      print('Error: $e'); // Log error untuk debugging
+    }
+  }
+
+// Dialog untuk menampilkan jika kuis sudah dikerjakan
+  void _showQuizAlreadyCompletedDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Peringatan"),
+          content: Text("Anda sudah mengerjakan kuis ini."),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Menutup dialog
+              },
+              child: Text("OK"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+// Dialog untuk menampilkan jika materi belum dibaca (locked)
+  void _showQuizLockedDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Peringatan"),
+          content: Text("Anda perlu membaca materi terlebih dahulu."),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Menutup dialog
+              },
+              child: Text("OK"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+// Dialog error untuk pengecekan kuis gagal
+  void _showErrorDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Error"),
+          content: Text("Terjadi kesalahan dalam memeriksa status kuis."),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Menutup dialog
+              },
+              child: Text("OK"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -133,7 +213,7 @@ class _StudentQuizListPageState extends State<StudentQuizListPage> {
   }
 
   Widget _buildQuizCard(Quiz quiz) {
-    final isLocked = !quiz.isRead;
+    final isLocked = !quiz.isRead; // If the material is not read, lock the quiz
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -156,24 +236,17 @@ class _StudentQuizListPageState extends State<StudentQuizListPage> {
             color: isLocked ? Colors.grey : Colors.black54,
           ),
         ),
-        trailing: isLocked
-            ? const Icon(Icons.lock, color: Colors.grey)
-            : const Icon(Icons.arrow_forward_ios, size: 18),
+        trailing: Icon(
+          isLocked ? Icons.lock : Icons.arrow_forward_ios,
+          size: 18,
+          color: isLocked ? Colors.grey : Colors.blue,
+        ),
         onTap: isLocked
             ? () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                        "❌ Materi belum dibaca. Harap baca materi terlebih dahulu."),
-                  ),
-                );
+                _showQuizLockedDialog(); // Show locked dialog
               }
             : () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => QuizPage(quizId: quiz.id)),
-                );
+                _checkQuizStatus(quiz.id); // Check if the quiz can be attempted
               },
       ),
     );

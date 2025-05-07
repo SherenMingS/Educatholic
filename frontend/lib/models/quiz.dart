@@ -7,7 +7,8 @@ class Quiz {
   final int? materiId; // ID materi terkait kuis
   final int questionCount;
   final List<Question> questions;
-  final bool isRead; // Apakah materi sudah dibaca
+  final bool isCompleted;
+  final bool isRead; // Track if the quiz is completed (instead of isRead)
 
   Quiz({
     required this.id,
@@ -18,8 +19,8 @@ class Quiz {
     this.materiId,
     required this.questionCount,
     required this.questions,
-    required this.isRead,
-    // default true (jika backend belum kirim)
+    required this.isCompleted,
+    required this.isRead, // Use this field to check quiz completion
   });
 
   factory Quiz.fromJson(Map<String, dynamic> json) {
@@ -36,7 +37,10 @@ class Quiz {
               .map((q) => Question.fromJson(q))
               .toList()
           : [],
-      isRead: json['is_read'] ?? false, // parsing dari backend
+      isCompleted: json['is_completed'] ??
+          false, // Pastikan ini sesuai dengan data di backend
+      isRead: json['is_read'] ??
+          false, // Menggunakan 'is_read' dari backend untuk status materi dibaca
     );
   }
 }

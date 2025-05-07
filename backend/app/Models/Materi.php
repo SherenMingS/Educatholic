@@ -1,4 +1,5 @@
 <?php
+// app/Models/Materi.php
 
 namespace App\Models;
 
@@ -8,7 +9,8 @@ use Illuminate\Database\Eloquent\Model;
 class Materi extends Model
 {
     use HasFactory;
-    protected $table = 'materi'; // Pastikan ini sesuai dengan nama
+
+    protected $table = 'materi'; // Pastikan ini sesuai dengan nama tabel
     protected $fillable = [
         'judul',
         'deskripsi',
@@ -19,5 +21,10 @@ class Materi extends Model
         'file',
         'tanggal_tayang',
     ];
-}
 
+    // Relasi dengan MateriRead
+    public function materiReads()
+    {
+        return $this->hasMany(MateriRead::class, 'materi_id');
+    }
+}

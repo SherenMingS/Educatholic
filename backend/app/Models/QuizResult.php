@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,10 +11,18 @@ class QuizResult extends Model
     protected $table = 'quiz_results';
 
     protected $fillable = [
-        'user_id',        // ✅ Tambahkan kolom ini
+        'user_id',
         'quiz_id',
         'score',
         'correct_answers',
         'total_questions'
     ];
+
+    // Relasi ke model Quiz
+    public function quiz()
+    {
+        return $this->belongsTo(Quiz::class, 'quiz_id');  // Menghubungkan dengan tabel 'quiz' melalui 'quiz_id'
+    }
+
+    
 }

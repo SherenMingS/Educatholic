@@ -318,4 +318,29 @@ class ApiService {
       return false;
     }
   }
+
+  // Fungsi untuk memeriksa apakah kuis sudah dikerjakan
+  static Future<Map<String, dynamic>> checkQuizStatus(
+      String token, int quizId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/check-quiz-attempted/$quizId'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      Map<String, dynamic> responseJson = jsonDecode(response.body);
+
+      // Cek apakah ada status 'failed' yang berarti kuis sudah pernah dikerjakan
+      if (responseJson['status'] == 'failed') {
+        throw Exception('Anda sudah mengerjakan kuis ini');
+      }
+
+      return responseJson;
+    } else {
+      throw Exception('Failed to check quiz status: ${response.body}');
+    }
+  }
 }
