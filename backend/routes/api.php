@@ -216,3 +216,5 @@ Route::middleware('auth:sanctum')->get('/activity-logs', [ActivityLogController:
 use App\Http\Controllers\QuizResultController;
 
 Route::middleware('auth:sanctum')->get('/check-quiz-attempted/{quizId}', [QuizResultController::class, 'checkIfAttempted']);
+
+Route::get('/attendance-sessions/last', [AttendanceSessionController::class, 'getLastSessionByKelas']);

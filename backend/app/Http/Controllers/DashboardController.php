@@ -22,24 +22,31 @@ class DashboardController extends Controller
         // Ambil rata-rata nilai kuis
         $quizAverage = QuizResult::where('user_id', $user->id)->avg('score') ?? 0;
 
-        // Ambil total jumlah badges berdasarkan kolom 'jumlah'
-        $badgesCount = Badge::where('user_id', $user->id)->sum('jumlah'); 
+        $badgesCount = QuizResult::where('user_id', $user->id)
+        ->where('score', 100)
+        ->count();
 
-        // Ambil daftar badges dari tabel
-        $badges = Badge::where('user_id', $user->id)->get(['jumlah', 'badge_level']);
+        $badgeLevel = match (true) {
+            $badgesCount >= 10 => 'Dewa Kuis 🥇',
+            $badgesCount >= 5 => 'Pro Player 🥈',
+            $badgesCount >= 1 => 'Beginner 🥉',
+            default => 'Belum Punya Badge ❌',
+        };
 
         return response()->json([
             'name' => $user->name,
             'quiz_average' => round($quizAverage, 2),
-            'badges_count' => (int) $badgesCount, // Sekarang ini mengambil total jumlah badge dari kolom 'jumlah'
-            'badges' => $badges, // Kirim detail badge sebagai array
+            'badges_count' => (int) $badgesCount,
+            'badge_level' => $badgeLevel, // 👈 pindahkan ke sini
             'recent_activities' => [
                 'Riwayat Aktivitas Anda',
                 'Rata-rata Skor Kuis ' . round($quizAverage, 2) . '%',
-                'Badges Tercapai ' . (int)$badgesCount
+                'Badges Tercapai ' . (int)$badgesCount,
             ]
         ]);
+        
     }
+    
 
 
     // Dashboard Guru

@@ -42,14 +42,19 @@ class _DashboardGuruState extends State<DashboardGuru> {
   Future<void> _fetchData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? kelas = prefs.getString('kelas_guru');
+    String? token = prefs.getString('token');
+
     if (kelas == null || kelas.isEmpty || kelas.startsWith('[')) {
       _kelasGuru = "Belum dipilih";
     } else {
       _kelasGuru = kelas;
-    }
-    setState(() {});
 
-    String? token = prefs.getString('token');
+      // ✅ Panggil ambil data sesi absensi terakhir
+      controller.fetchLastAttendance(kelas);
+    }
+
+    setState(() {}); // Untuk update UI
+
     if (token != null) {
       controller.fetchDashboardGuru(token);
     }
@@ -70,6 +75,7 @@ class _DashboardGuruState extends State<DashboardGuru> {
               setState(() {
                 _kelasGuru = '8A';
               });
+              controller.fetchLastAttendance('8A'); // ✅ ini auto-refresh!
               Navigator.pop(context);
             },
             child: Text("Kelas 8A"),
@@ -80,6 +86,7 @@ class _DashboardGuruState extends State<DashboardGuru> {
               setState(() {
                 _kelasGuru = '8B';
               });
+              controller.fetchLastAttendance('8B'); // ✅ refresh juga di sini
               Navigator.pop(context);
             },
             child: Text("Kelas 8B"),
@@ -209,21 +216,80 @@ class _DashboardGuruState extends State<DashboardGuru> {
   }
 
   Widget _buildAttendanceStats() {
+    return Obx(() {
+      final data = controller.lastAttendance.value;
+
+      if (data == null) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.red.shade50,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text("Belum ada sesi absensi terbaru."),
+        );
+      }
+
+      final hadir = data['hadir'] ?? 0;
+      final total = data['total_siswa'] ?? 1;
+      final double persen = (hadir / total).clamp(0.0, 1.0);
+
+      return Container(
+        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("📊 Sesi Absensi Terakhir",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _infoBox("Kelas", data['kelas']),
+                _infoBox("Kode", data['kode']),
+                _infoBox("Tanggal", data['tanggal']),
+                _infoBox(
+                    "Jam", "${data['jam_mulai']} - ${data['jam_selesai']}"),
+                _infoBox(
+                    "Hadir", "${data['hadir']} / ${data['total_siswa']} siswa"),
+              ],
+            ),
+            const SizedBox(height: 14),
+            LinearProgressIndicator(
+              value: persen,
+              backgroundColor: Colors.blue.shade100,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+              minHeight: 8,
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _infoBox(String label, String value) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 5)],
+        border: Border.all(color: Colors.blue.shade100),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Statistik Kehadiran",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          SizedBox(height: 10),
-          _buildProgressBar("8A", 0.78),
-          _buildProgressBar("8B", 0.90),
+          Text(label,
+              style: TextStyle(fontSize: 12, color: Colors.blueGrey.shade700)),
+          SizedBox(height: 2),
+          Text(value,
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
         ],
       ),
     );

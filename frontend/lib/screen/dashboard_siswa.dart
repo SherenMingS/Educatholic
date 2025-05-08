@@ -251,8 +251,7 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
     );
   }
 
-  
-Widget _buildStats() {
+  Widget _buildStats() {
     return Column(
       children: [
         // 🔥 Tombol Absen Sekarang
@@ -288,13 +287,82 @@ Widget _buildStats() {
           },
           child: _statCard(Icons.history, "Riwayat Aktivitas Anda"),
         ),
-        _statCard(Icons.show_chart,
-            "Rata-rata Skor Kuis ${controller.quizAverage.value}%"),
         Obx(() => _statCard(
-            Icons.badge, "Badges Tercapai (${controller.badgesCount.value})")),
+              Icons.show_chart,
+              controller.quizAverage.value == 0
+                  ? "Rata-rata Skor Kuis sedang dimuat..."
+                  : "Rata-rata Skor Kuis ${controller.quizAverage.value}%",
+            )),
+
+        Obx(() => GestureDetector(
+              onTap: () => _showBadgeDialog(context),
+              child: _statCard(Icons.badge,
+                  "Badges Tercapai (${controller.badgesCount.value}) • Level: ${controller.badgeLevel.value}"),
+            )),
       ],
     );
   }
+
+  void _showBadgeDialog(BuildContext context) {
+    final count = controller.badgesCount.value;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          title: Text("🎖️ Peringkat Badge Kamu", textAlign: TextAlign.center),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _badgeLevelItem(
+                  "🥉", "Beginner", "Punya minimal 1 badge", count >= 1),
+              _badgeLevelItem(
+                  "🥈", "Pro Player", "Punya minimal 5 badge", count >= 5),
+              _badgeLevelItem(
+                  "🥇", "Dewa Kuis", "Punya minimal 10 badge", count >= 10),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("Tutup"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _badgeLevelItem(
+      String emoji, String title, String subtitle, bool unlocked) {
+    return ListTile(
+      leading: Text(
+        emoji,
+        style: TextStyle(fontSize: 26),
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: unlocked ? Colors.black : Colors.grey,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(
+          color: unlocked ? Colors.black54 : Colors.grey,
+          fontStyle: unlocked ? FontStyle.normal : FontStyle.italic,
+        ),
+      ),
+      trailing: Icon(
+        unlocked ? Icons.verified : Icons.lock,
+        color: unlocked ? Colors.green : Colors.grey,
+      ),
+    );
+  }
+
   Widget _statCard(IconData icon, String title) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),

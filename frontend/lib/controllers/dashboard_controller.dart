@@ -10,6 +10,8 @@ class DashboardController extends GetxController {
   var isLoading = true.obs;
   var badgesCount =
       0.obs; // Tambahkan variabel ini untuk menyimpan jumlah badges
+  var badgeLevel = ''.obs; // ✅ Tambahkan ini
+  var lastAttendance = Rxn<Map<String, dynamic>>();
 
   void fetchDashboard(String token) async {
     try {
@@ -17,7 +19,7 @@ class DashboardController extends GetxController {
       final response = await http.get(
         Uri.parse("http://127.0.0.1:8000/api/dashboard-siswa"),
         headers: {
-          "Authorization": "Bearer $token", // Gunakan token dari login
+          "Authorization": "Bearer $token",
           "Content-Type": "application/json",
         },
       );
@@ -26,8 +28,10 @@ class DashboardController extends GetxController {
         var data = json.decode(response.body);
         name.value = data['name'];
         quizAverage.value = data['quiz_average'].toDouble();
-        badges.value = data['badges'] ?? []; // Simpan daftar badges
-        badgesCount.value = data['badges_count'] ?? 0; // Update jumlah badges
+        badges.value = data['badges'] ?? [];
+        badgesCount.value = data['badges_count'] ?? 0;
+        badgeLevel.value =
+            data['badge_level'] ?? 'Belum Punya Badge ❌'; // ✅ Tambahkan ini
         recentActivities.value = List<String>.from(data['recent_activities']);
       } else {
         print("Error response: ${response.body}");
@@ -60,6 +64,29 @@ class DashboardController extends GetxController {
       print("Error: $e");
     } finally {
       isLoading(false);
+    }
+  }
+
+  void fetchLastAttendance(String kelas) async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+            'http://127.0.0.1:8000/api/attendance-sessions/last?kelas=$kelas'),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['status'] == 'success') {
+          lastAttendance.value = data['data'];
+        } else {
+          lastAttendance.value = null;
+        }
+      }
+    } catch (e) {
+      print("Error fetching last attendance: $e");
     }
   }
 }

@@ -57,6 +57,51 @@ class AttendanceSessionController extends Controller
         'data' => $sessions
     ]);
 }
+
+public function getLastSessionByKelas(Request $request)
+{
+    $kelas = $request->query('kelas');
+
+    if (!$kelas) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Kelas harus disertakan'
+        ], 400);
+    }
+
+    $session = AttendanceSession::where('kelas', $kelas)
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+    if (!$session) {
+        return response()->json([
+            'status' => 'empty',
+            'message' => 'Belum ada sesi absensi untuk kelas ini'
+        ]);
+    }
+
+    $hadir = \App\Models\AttendanceRecord::where('session_id', $session->id)
+        ->where('status', 'hadir')
+        ->count();
+
+    $total = \App\Models\User::where('kelas', $kelas)
+        ->where('role', 'siswa')
+        ->count();
+
+    return response()->json([
+        'status' => 'success',
+        'data' => [
+            'kelas' => $session->kelas,
+            'kode' => $session->code,
+            'tanggal' => $session->tanggal,
+            'jam_mulai' => $session->jam_mulai,
+            'jam_selesai' => $session->jam_selesai,
+            'hadir' => $hadir,
+            'total_siswa' => $total
+        ]
+    ]);
+}
+
     
 
 }
