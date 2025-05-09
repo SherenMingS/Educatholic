@@ -154,6 +154,8 @@ class _QuizPageState extends State<QuizPage> {
             totalSoal: quizData!['questions'].length,
             jawabanBenar: result['correct_answers'],
             skor: result['score'],
+            jawabanSalah:
+                List<Map<String, dynamic>>.from(result['jawaban_salah']),
           ),
         ),
       );

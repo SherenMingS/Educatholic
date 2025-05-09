@@ -25,16 +25,17 @@ class ActivityLogController extends Controller
         });
 
         // Ambil aktivitas mengikuti kuis untuk user yang sedang login
-        $quizResults = QuizResult::where('user_id', $userId)
-            ->select('created_at', 'quiz_id')
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($item) {
-                $item->action = 'Mengikuti Kuis';
-                $item->description = "Kuis " . $item->quiz_id;
-                $item->status = 'Sukses';
-                return $item;
-            });
+        $quizResults = QuizResult::with('quiz') // Tambahkan eager load quiz
+    ->where('user_id', $userId)
+    ->orderBy('created_at', 'desc')
+    ->get()
+    ->map(function ($item) {
+        $item->action = 'Mengikuti Kuis';
+        $item->description = $item->quiz ? "Kuis " . $item->quiz->title : "Kuis Tidak Ditemukan";
+        $item->status = 'Sukses';
+        return $item;
+    });
+
 
         // Gabungkan aktivitas membaca materi dan mengerjakan kuis
         $activityLogs = $materiReads->merge($quizResults)

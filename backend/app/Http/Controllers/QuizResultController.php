@@ -51,4 +51,12 @@ class QuizResultController extends Controller
     return response()->json(['status' => 'success', 'message' => 'Hasil kuis disimpan', 'data' => $quizResult], 201);
 }
 
+// File: app/Models/QuizResult.php
+
+public function quiz()
+{
+    return $this->belongsTo(\App\Models\Quiz::class);
+}
+
+
 }

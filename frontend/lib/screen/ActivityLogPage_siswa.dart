@@ -51,12 +51,16 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
       print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
-        // Parsing data yang diterima dari API
         var data = jsonDecode(response.body)['data'];
         List<Map<String, dynamic>> logs = [];
 
-        // Jika data adalah list, langsung masukkan data ke dalam list logs
-        logs = List<Map<String, dynamic>>.from(data);
+        if (data is List) {
+          logs = List<Map<String, dynamic>>.from(data);
+        } else if (data is Map) {
+          logs = data.values.map((e) => Map<String, dynamic>.from(e)).toList();
+        } else {
+          throw Exception("Format data tidak sesuai");
+        }
 
         setState(() {
           activityLogs = logs;

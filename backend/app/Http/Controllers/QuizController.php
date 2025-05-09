@@ -9,6 +9,7 @@ use App\Models\QuizResult;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth; 
 use App\Models\MateriRead;
+use App\Models\QuizAnswer;
 
 class QuizController extends Controller
 {
@@ -177,6 +178,21 @@ class QuizController extends Controller
 
         $score = round(($correct / $total) * 100, 2);
 
+
+
+        foreach ($request->answers as $answer) {
+            $question = QuizQuestion::find($answer['question_id']);
+            $isCorrect = $question && $question->correct_answer === $answer['selected_answer'];
+        
+            QuizAnswer::create([
+                'user_id' => auth()->id(),
+                'quiz_id' => $id,
+                'question_id' => $answer['question_id'],
+                'selected_answer' => $answer['selected_answer'],
+                'is_correct' => $isCorrect ? 1 : 0,
+            ]);
+        }
+
         QuizResult::create([
             'user_id' => auth()->id(),
             'quiz_id' => $id,
@@ -185,13 +201,42 @@ class QuizController extends Controller
             'total_questions' => $total,
         ]);
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Jawaban berhasil disimpan!',
-            'score' => $score,
-            'correct_answers' => $correct,
-            'total_questions' => $total,
-        ]);
+        $jawabanSalah = QuizAnswer::with('question')
+    ->where('user_id', auth()->id())
+    ->where('quiz_id', $id)
+    ->where('is_correct', 0)
+    ->get()
+    ->map(function ($item) {
+        return [
+            'pertanyaan' => $item->question->question,
+            'jawabanUser' => $item->selected_answer . ' (' . match ($item->selected_answer) {
+                'A' => $item->question->option_1,
+                'B' => $item->question->option_2,
+                'C' => $item->question->option_3,
+                'D' => $item->question->option_4,
+                default => '-',
+            } . ')',
+            'jawabanBenar' => match ($item->question->correct_answer) {
+                'A' => $item->question->option_1,
+                'B' => $item->question->option_2,
+                'C' => $item->question->option_3,
+                'D' => $item->question->option_4,
+                default => null,
+            },
+     
+
+        ];
+    });
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Jawaban berhasil disimpan!',
+        'score' => $score,
+        'correct_answers' => $correct,
+        'total_questions' => $total,
+        'jawaban_salah' => $jawabanSalah
+    ]);
+    
     }
 
     // ✅ UPDATE QUIZ (TERMASUK MATERI_ID)
