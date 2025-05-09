@@ -2,11 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'hasilquiz_siswa.dart'; // Import halaman hasil kuis
+import 'hasilquiz_siswa.dart';
 
 class QuizPage extends StatefulWidget {
   final int quizId;
-
   const QuizPage({Key? key, required this.quizId}) : super(key: key);
 
   @override
@@ -19,10 +18,13 @@ class _QuizPageState extends State<QuizPage> {
   String? token;
   int currentQuestionIndex = 0;
   List<String?> selectedAnswers = [];
-
   int _remainingSeconds = 0;
   Timer? _timer;
-  bool isStarted = false; // Untuk kontrol sudah mulai kuis atau belum
+  bool isStarted = false;
+
+  bool isFiftyUsed = false;
+  bool isExtraTimeUsed = false;
+  Map<int, Set<int>> eliminatedOptionsMap = {};
 
   @override
   void initState() {
@@ -43,13 +45,9 @@ class _QuizPageState extends State<QuizPage> {
           selectedAnswers = List.filled(data['questions'].length, null);
           _remainingSeconds = data['duration'] * 60;
         });
-
-        // Setelah load selesai, langsung tampilkan dialog
         _showStartQuizDialog();
       } catch (e) {
-        setState(() {
-          isLoading = false;
-        });
+        setState(() => isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("⚠️ Gagal memuat kuis: $e")),
         );
@@ -60,48 +58,35 @@ class _QuizPageState extends State<QuizPage> {
   void _showStartQuizDialog() {
     showDialog(
       context: context,
-      barrierDismissible: false, // Gak bisa tap luar untuk nutup
-      barrierColor: Colors.black.withOpacity(0.5), // Blur background
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text('Mulai Kuis'),
+        content: Text('Apakah kamu siap? Timer akan langsung berjalan.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pop(context);
+            },
+            child: Text('Batal', style: TextStyle(color: Colors.red)),
           ),
-          title: const Text('Mulai Kuis'),
-          content: const Text(
-            'Apakah kamu siap untuk mulai mengerjakan kuis ini? '
-            'Waktu akan langsung berjalan setelah kamu mulai.',
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() => isStarted = true);
+              _startTimer();
+            },
+            child: Text('Mulai', style: TextStyle(color: Colors.blue)),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Tutup dialog
-                Navigator.pop(context); // ⬅️ Keluar dari halaman kuis
-              },
-              child: const Text('Batal', style: TextStyle(color: Colors.red)),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Tutup dialog
-                setState(() {
-                  isStarted = true;
-                });
-                _startTimer(); // Mulai timer
-              },
-              child: const Text('Mulai', style: TextStyle(color: Colors.blue)),
-            ),
-          ],
-        );
-      },
+        ],
+      ),
     );
   }
 
   void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
       if (_remainingSeconds > 0) {
-        setState(() {
-          _remainingSeconds--;
-        });
+        setState(() => _remainingSeconds--);
       } else {
         timer.cancel();
         _autoSubmitQuiz();
@@ -111,7 +96,7 @@ class _QuizPageState extends State<QuizPage> {
 
   void _autoSubmitQuiz() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('⏰ Waktu habis! Kuis akan disubmit.')),
+      SnackBar(content: Text('⏰ Waktu habis! Kuis akan disubmit.')),
     );
     _submitQuiz();
   }
@@ -119,7 +104,7 @@ class _QuizPageState extends State<QuizPage> {
   void _submitQuiz() async {
     if (selectedAnswers.contains(null)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("⚠️ Harap jawab semua pertanyaan!")),
+        SnackBar(content: Text("⚠️ Harap jawab semua pertanyaan!")),
       );
       return;
     }
@@ -127,19 +112,15 @@ class _QuizPageState extends State<QuizPage> {
     List<Map<String, dynamic>> answers = [];
     for (int i = 0; i < selectedAnswers.length; i++) {
       String selectedLetter = "";
+      var q = quizData!['questions'][i];
 
-      if (selectedAnswers[i] == quizData!['questions'][i]['option_1']) {
-        selectedLetter = "A";
-      } else if (selectedAnswers[i] == quizData!['questions'][i]['option_2']) {
-        selectedLetter = "B";
-      } else if (selectedAnswers[i] == quizData!['questions'][i]['option_3']) {
-        selectedLetter = "C";
-      } else if (selectedAnswers[i] == quizData!['questions'][i]['option_4']) {
-        selectedLetter = "D";
-      }
+      if (selectedAnswers[i] == q['option_1']) selectedLetter = "A";
+      if (selectedAnswers[i] == q['option_2']) selectedLetter = "B";
+      if (selectedAnswers[i] == q['option_3']) selectedLetter = "C";
+      if (selectedAnswers[i] == q['option_4']) selectedLetter = "D";
 
       answers.add({
-        "question_id": quizData!['questions'][i]['id'],
+        "question_id": q['id'],
         "selected_answer": selectedLetter,
       });
     }
@@ -150,7 +131,7 @@ class _QuizPageState extends State<QuizPage> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => HasilKuisPage(
+          builder: (_) => HasilKuisPage(
             totalSoal: quizData!['questions'].length,
             jawabanBenar: result['correct_answers'],
             skor: result['score'],
@@ -161,15 +142,33 @@ class _QuizPageState extends State<QuizPage> {
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("⚠️ Gagal mengirim jawaban: $e")),
+        SnackBar(content: Text("⚠️ Gagal submit: $e")),
       );
     }
   }
 
-  String _formatTime(int seconds) {
-    final minutes = seconds ~/ 60;
-    final remainingSeconds = seconds % 60;
-    return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+  void _useFiftyFifty() {
+    var currentQuestion = quizData!['questions'][currentQuestionIndex];
+    String correct = currentQuestion['correct_answer'];
+    List<String> keys = ['A', 'B', 'C', 'D'];
+    List<int> salah = [];
+
+    for (int i = 0; i < 4; i++) {
+      if (keys[i] != correct) salah.add(i);
+    }
+
+    salah.shuffle();
+    eliminatedOptionsMap[currentQuestionIndex] = salah.take(2).toSet();
+
+    setState(() {
+      isFiftyUsed = true;
+    });
+  }
+
+  String _formatTime(int s) {
+    final m = s ~/ 60;
+    final rs = s % 60;
+    return '${m.toString().padLeft(2, '0')}:${rs.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -180,163 +179,179 @@ class _QuizPageState extends State<QuizPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    if (quizData == null ||
-        !quizData!.containsKey('questions') ||
-        quizData!['questions'].isEmpty) {
-      return const Scaffold(
-        body: Center(child: Text("⚠️ Tidak ada soal dalam kuis ini!")),
-      );
-    }
+    if (isLoading)
+      return Scaffold(body: Center(child: CircularProgressIndicator()));
 
     var questions = quizData!['questions'];
-    var currentQuestion = questions[currentQuestionIndex];
+    var current = questions[currentQuestionIndex];
+    List<String?> options = [
+      current['option_1'],
+      current['option_2'],
+      current['option_3'],
+      current['option_4']
+    ];
+    List<String> labels = ['A', 'B', 'C', 'D'];
+    Set<int> eliminated = eliminatedOptionsMap[currentQuestionIndex] ?? {};
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.blue,
-        title: Text(quizData!['title']),
-      ),
+      appBar:
+          AppBar(title: Text(quizData!['title']), backgroundColor: Colors.blue),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: isStarted
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  /// Timer dan Nomor Soal
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Icon(Icons.timer, color: Colors.black54),
-                      Text(
-                        _formatTime(_remainingSeconds),
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      Row(
-                        children: List.generate(
-                          questions.length,
-                          (index) => Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: CircleAvatar(
-                              radius: 12,
-                              backgroundColor: index == currentQuestionIndex
-                                  ? Colors.blue
-                                  : Colors.grey.shade300,
-                              child: Text(
-                                "${index + 1}",
-                                style: const TextStyle(
-                                    color: Colors.white, fontSize: 12),
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(children: [
+                          Icon(Icons.timer),
+                          SizedBox(width: 4),
+                          Text(_formatTime(_remainingSeconds),
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold))
+                        ]),
+                        Row(
+                          children: List.generate(
+                            questions.length,
+                            (i) => Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 2),
+                              child: CircleAvatar(
+                                radius: 12,
+                                backgroundColor: i == currentQuestionIndex
+                                    ? Colors.blue
+                                    : Colors.grey,
+                                child: Text("${i + 1}",
+                                    style: TextStyle(
+                                        color: Colors.white, fontSize: 12)),
                               ),
                             ),
                           ),
+                        )
+                      ]),
+                  SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (!isFiftyUsed)
+                        IconButton(
+                          icon: Icon(Icons.filter_alt_off),
+                          tooltip: '50:50 (Hapus 2 opsi)',
+                          onPressed: _useFiftyFifty,
                         ),
-                      ),
+                      if (!isExtraTimeUsed)
+                        IconButton(
+                          icon: Icon(Icons.timer),
+                          tooltip: 'Tambah 20 detik',
+                          onPressed: () {
+                            setState(() {
+                              _remainingSeconds += 20;
+                              isExtraTimeUsed = true;
+                            });
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                content: Text("⏱ Waktu ditambah 20 detik")));
+                          },
+                        ),
                     ],
                   ),
-
-                  const SizedBox(height: 20),
-
-                  /// Pertanyaan
-                  Text(
-                    "Pertanyaan ${currentQuestionIndex + 1}",
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    currentQuestion['question'],
-                    style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  /// Pilihan Jawaban
+                  SizedBox(height: 10),
+                  Text("Pertanyaan ${currentQuestionIndex + 1}",
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  SizedBox(height: 10),
+                  Text(current['question'],
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  SizedBox(height: 20),
                   Column(
-                    children: [
-                      currentQuestion['option_1'],
-                      currentQuestion['option_2'],
-                      currentQuestion['option_3'],
-                      currentQuestion['option_4'],
-                    ].map((answer) {
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            selectedAnswers[currentQuestionIndex] = answer;
-                          });
-                        },
-                        child: Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.only(bottom: 10),
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 12, horizontal: 16),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: selectedAnswers[currentQuestionIndex] ==
-                                      answer
-                                  ? Colors.blue
-                                  : Colors.black54,
+                    children: List.generate(4, (i) {
+                      if (eliminated.contains(i)) return SizedBox.shrink();
+                      bool isSelected =
+                          selectedAnswers[currentQuestionIndex] == options[i];
+                      return Container(
+                        width: double.infinity,
+                        margin: EdgeInsets.only(bottom: 12),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => setState(() =>
+                              selectedAnswers[currentQuestionIndex] =
+                                  options[i]),
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                                vertical: 16, horizontal: 20),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? Colors.blue.shade50
+                                  : Colors.white,
+                              border: Border.all(
+                                color: isSelected
+                                    ? Colors.blue
+                                    : Colors.grey.shade400,
+                                width: 1.5,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            borderRadius: BorderRadius.circular(8),
-                            color:
-                                selectedAnswers[currentQuestionIndex] == answer
-                                    ? Colors.blue.shade100
-                                    : Colors.white,
-                          ),
-                          child: Text(
-                            answer ?? "Pilihan tidak tersedia",
-                            style: const TextStyle(fontSize: 16),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 14,
+                                  backgroundColor: isSelected
+                                      ? Colors.blue
+                                      : Colors.grey.shade300,
+                                  child: Text(
+                                    labels[i],
+                                    style: TextStyle(
+                                        color: Colors.white, fontSize: 14),
+                                  ),
+                                ),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    options[i] ?? '-',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: isSelected
+                                          ? Colors.blue[900]
+                                          : Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       );
-                    }).toList(),
+                    }),
                   ),
-
-                  const SizedBox(height: 20),
-
-                  /// Navigasi Soal
+                  SizedBox(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       ElevatedButton(
                         onPressed: currentQuestionIndex > 0
-                            ? () {
-                                setState(() {
-                                  currentQuestionIndex--;
-                                });
-                              }
+                            ? () => setState(() => currentQuestionIndex--)
                             : null,
-                        child: const Text("Sebelumnya"),
+                        child: Text("Sebelumnya"),
                       ),
                       currentQuestionIndex < questions.length - 1
                           ? ElevatedButton(
-                              onPressed: () {
-                                setState(() {
-                                  currentQuestionIndex++;
-                                });
-                              },
-                              child: const Text("Selanjutnya"),
+                              onPressed: () =>
+                                  setState(() => currentQuestionIndex++),
+                              child: Text("Selanjutnya"),
                             )
                           : ElevatedButton(
                               onPressed: _submitQuiz,
-                              child: const Text("Selesai"),
+                              child: Text("Selesai"),
                             ),
                     ],
                   ),
                 ],
               )
-            : const Center(
-                child: Text(
-                  'Menunggu untuk mulai kuis...',
-                  style: TextStyle(fontSize: 18),
-                ),
-              ),
+            : Center(
+                child: Text("Menunggu untuk mulai kuis...",
+                    style: TextStyle(fontSize: 18))),
       ),
     );
   }
