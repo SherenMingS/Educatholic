@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:frontend/screen/materilist_guru.dart';
 import 'package:http/http.dart' as http;
 import 'package:frontend/screen/dashboard_guru.dart';
 import 'package:frontend/screen/login.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http_parser/http_parser.dart';
+import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 
 class ProfileGuruPage extends StatefulWidget {
   const ProfileGuruPage({Key? key}) : super(key: key);
@@ -123,12 +125,33 @@ class _ProfileGuruPageState extends State<ProfileGuruPage> {
 
   void _onItemTapped(int index) {
     if (index == _selectedIndex) return;
-    if (index == 1) {
-      Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (_) => DashboardGuru()));
-    } else {
-      setState(() => _selectedIndex = index);
+
+    switch (index) {
+      case 0: // Materi (Manage Kelas)
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => MateriGuruPage()),
+        );
+        break;
+
+      case 1: // Home
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => DashboardGuru()),
+        );
+        break;
+
+      case 2: // Profile
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => ProfileGuruPage()),
+        );
+        break;
     }
+
+    setState(() {
+      _selectedIndex = index;
+    });
   }
 
   Widget _buildProfileCard() {
@@ -212,17 +235,26 @@ class _ProfileGuruPageState extends State<ProfileGuruPage> {
   }
 
   Widget _buildBottomNavBar() {
-    return BottomNavigationBar(
-      currentIndex: _selectedIndex,
-      onTap: _onItemTapped,
-      backgroundColor: Colors.blue,
-      selectedItemColor: Colors.white,
-      unselectedItemColor: Colors.white70,
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: "Kelas"),
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+    return CurvedNavigationBar(
+      backgroundColor: Colors.transparent,
+      color: Colors.blue, // Sesuaikan dengan tema utama
+      height: 65,
+      index: _selectedIndex,
+      animationDuration: const Duration(milliseconds: 300),
+      items: [
+        Icon(Icons.menu_book,
+            size: 28,
+            color: _selectedIndex == 0 ? Colors.yellow : Colors.white),
+        Icon(Icons.home,
+            size: 28,
+            color: _selectedIndex == 1 ? Colors.yellow : Colors.white),
+        Icon(Icons.person,
+            size: 28,
+            color: _selectedIndex == 2 ? Colors.yellow : Colors.white),
       ],
+      onTap: (index) {
+        _onItemTapped(index);
+      },
     );
   }
 

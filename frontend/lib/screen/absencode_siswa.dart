@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
+import '../widgets/custom_appbar.dart';
+import '../widgets/empty_bottombar.dart';
 
 class AbsenKodePage extends StatefulWidget {
   @override
@@ -25,10 +27,17 @@ class _AbsenKodePageState extends State<AbsenKodePage> {
       _message = null;
     });
 
+    if (_kodeController.text.trim().isEmpty) {
+      setState(() {
+        _loading = false;
+        _message = "Kode tidak boleh kosong.";
+      });
+      return;
+    }
+
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('token');
     int? userId = prefs.getInt('user_id');
-    print("User ID: $userId");
 
     final response = await http.post(
       Uri.parse('http://localhost:8000/api/attendance/check-code'),
@@ -50,10 +59,10 @@ class _AbsenKodePageState extends State<AbsenKodePage> {
         _kodeValid = true;
         _sessionId = data['session_id'].toString();
         _kelas = data['kelas'];
-        _message = "Kode valid. Silakan klik Absen.";
+        _message = "✅ Kode valid. Silakan klik Absen.";
       } else if (data['status'] == 'already_absent') {
         _sudahAbsen = true;
-        _message = "Kamu sudah absen untuk sesi ini.";
+        _message = "⚠️ Kamu sudah absen untuk sesi ini.";
       } else {
         _message = data['message'];
       }
@@ -84,7 +93,7 @@ class _AbsenKodePageState extends State<AbsenKodePage> {
         content: Text("Absensi berhasil dicatat!"),
         backgroundColor: Colors.green,
       ));
-      Navigator.pop(context); // kembali ke dashboard
+      Navigator.pop(context);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(data['message']),
@@ -96,50 +105,86 @@ class _AbsenKodePageState extends State<AbsenKodePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Input Kode Absensi")),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _kodeController,
-              decoration: InputDecoration(
-                labelText: "Masukkan Kode Absensi",
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            ElevatedButton.icon(
-              onPressed: _loading ? null : cekKode,
-              icon: Icon(Icons.check),
-              label: Text("Cek Kode"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 20),
-            if (_message != null)
-              Text(
-                _message!,
-                style: TextStyle(
-                  color: _kodeValid ? Colors.green : Colors.red,
-                  fontWeight: FontWeight.bold,
+      appBar: CustomPageAppBar(
+        title: 'Input Kode Absensi',
+        icon: Icons.verified_user,
+      ),
+      bottomNavigationBar: EmptyBottomBar(),
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("Masukkan Kode Absensi",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              SizedBox(height: 10),
+              TextField(
+                controller: _kodeController,
+                decoration: InputDecoration(
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.blue),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.blue),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.blue, width: 2),
+                  ),
                 ),
               ),
-            const SizedBox(height: 20),
-            if (_kodeValid && !_sudahAbsen)
-              ElevatedButton.icon(
-                onPressed: kirimAbsen,
-                icon: Icon(Icons.how_to_reg),
-                label: Text("Absen Sekarang"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  minimumSize: Size(double.infinity, 50),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _loading ? null : cekKode,
+                  icon: Icon(Icons.check),
+                  label: Text("Cek Kode"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
                 ),
               ),
-          ],
+              const SizedBox(height: 20),
+              if (_message != null)
+                Text(
+                  _message!,
+                  style: TextStyle(
+                    color: _kodeValid ? Colors.green : Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              const SizedBox(height: 20),
+              if (_kodeValid && !_sudahAbsen)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: kirimAbsen,
+                    icon: Icon(Icons.how_to_reg),
+                    label: Text("Absen Sekarang"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

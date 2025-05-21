@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../widgets/custom_appbar.dart';
+import '../widgets/empty_bottombar.dart';
 
 class ActivityLogPage extends StatefulWidget {
   @override
@@ -11,7 +13,7 @@ class ActivityLogPage extends StatefulWidget {
 class _ActivityLogPageState extends State<ActivityLogPage> {
   List<Map<String, dynamic>> activityLogs = [];
   bool isLoading = true;
-  String token = ''; // Token untuk autentikasi
+  String token = '';
 
   @override
   void initState() {
@@ -19,36 +21,25 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
     _fetchToken();
   }
 
-  // Mengambil token dari SharedPreferences
   Future<void> _fetchToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      token = prefs.getString('token') ?? ''; // Ambil token yang disimpan
+      token = prefs.getString('token') ?? '';
     });
     if (token.isNotEmpty) {
-      // Jika token ditemukan, fetch activity logs
       _fetchActivityLogs();
     } else {
-      // Jika token tidak ada, beri informasi atau arahkan ke login
-      setState(() {
-        isLoading = false;
-      });
+      setState(() => isLoading = false);
       print("Token tidak ditemukan.");
     }
   }
 
-  // Fungsi untuk mengambil data aktivitas dari API
   Future<void> _fetchActivityLogs() async {
     try {
       final response = await http.get(
         Uri.parse('http://127.0.0.1:8000/api/activity-logs'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        headers: {'Authorization': 'Bearer $token'},
       );
-
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         var data = jsonDecode(response.body)['data'];
@@ -58,21 +49,18 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
           logs = List<Map<String, dynamic>>.from(data);
         } else if (data is Map) {
           logs = data.values.map((e) => Map<String, dynamic>.from(e)).toList();
-        } else {
-          throw Exception("Format data tidak sesuai");
         }
 
+        // Reverse agar yang terbaru di atas
         setState(() {
-          activityLogs = logs;
+          activityLogs = logs.reversed.toList();
           isLoading = false;
         });
       } else {
-        throw Exception('Failed to load activity logs');
+        throw Exception('Gagal memuat riwayat aktivitas');
       }
     } catch (e) {
-      setState(() {
-        isLoading = false;
-      });
+      setState(() => isLoading = false);
       print('Error fetching activity logs: $e');
     }
   }
@@ -80,47 +68,46 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Riwayat Aktivitas"),
-      ),
+      appBar: CustomPageAppBar(title: "Riwayat Aktivitas", icon: Icons.history),
+      bottomNavigationBar: EmptyBottomBar(),
+      backgroundColor: Colors.white,
       body: isLoading
-          ? Center(
-              child:
-                  CircularProgressIndicator()) // Tampilkan progress jika loading
-          : ListView.builder(
-              itemCount: activityLogs.length,
-              itemBuilder: (context, index) {
-                var log = activityLogs[index];
-                return Card(
-                  margin: EdgeInsets.all(10),
-                  child: ListTile(
-                    title: Text(log['action']),
-                    subtitle: Text(log['description']),
-                    trailing: IconButton(
-                      icon: Icon(Icons.arrow_forward),
-                      onPressed: () {
-                        // Tindakan ketika item diklik
-                        showDialog(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return AlertDialog(
+          ? Center(child: CircularProgressIndicator())
+          : activityLogs.isEmpty
+              ? Center(child: Text("Belum ada aktivitas."))
+              : ListView.builder(
+                  padding: EdgeInsets.all(16),
+                  itemCount: activityLogs.length,
+                  itemBuilder: (context, index) {
+                    var log = activityLogs[index];
+                    return Card(
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      margin: EdgeInsets.only(bottom: 12),
+                      child: ListTile(
+                        title: Text(log['action'],
+                            style: TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(log['description']),
+                        trailing: Icon(Icons.arrow_forward_ios),
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (_) => AlertDialog(
                               title: Text("Detail Aktivitas"),
                               content: Text(log['status']),
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(context),
                                   child: Text("Tutup"),
-                                ),
+                                )
                               ],
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                );
-              },
-            ),
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
     );
   }
 }

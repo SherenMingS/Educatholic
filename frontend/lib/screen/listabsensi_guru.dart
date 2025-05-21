@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:frontend/widgets/custom_appbar.dart';
+import 'package:frontend/widgets/empty_bottombar.dart';
 
-import 'manageabsensi_guru.dart'; // Import halaman manage absensi
+import 'manageabsensi_guru.dart';
 
 class ListAttendanceSessionsPage extends StatefulWidget {
   @override
@@ -15,7 +17,7 @@ class _ListAttendanceSessionsPageState
     extends State<ListAttendanceSessionsPage> {
   List<dynamic> sessions = [];
   bool loading = true;
-  String? kelasAktif; // <- untuk simpan kelas aktif dari SharedPreferences
+  String? kelasAktif;
 
   @override
   void initState() {
@@ -26,18 +28,13 @@ class _ListAttendanceSessionsPageState
   Future<void> fetchSessions() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('token');
-    kelasAktif = prefs.getString('kelas_guru'); // <- Ambil kelas aktif
+    kelasAktif = prefs.getString('kelas_guru');
 
-    print('Kelas Aktif: $kelasAktif'); // DEBUG lihat kelas aktif
-
-    if (kelasAktif == null) {
-      print('Kelas aktif tidak ditemukan.');
-      return;
-    }
+    if (kelasAktif == null) return;
 
     final response = await http.get(
       Uri.parse(
-          'http://localhost:8000/api/attendance-sessions?kelas=$kelasAktif'),
+          'http://127.0.0.1:8000/api/attendance-sessions?kelas=$kelasAktif'),
       headers: {
         'Authorization': 'Bearer $token',
       },
@@ -47,9 +44,7 @@ class _ListAttendanceSessionsPageState
       var data = jsonDecode(response.body);
       List<dynamic> allSessions = data['data'];
 
-      // FILTER sesi absensi berdasarkan kelas aktif
       List<dynamic> filteredSessions = allSessions.where((session) {
-        // Bandingkan dengan aman
         return session['kelas'].toString().trim().toUpperCase() ==
             kelasAktif!.trim().toUpperCase();
       }).toList();
@@ -59,46 +54,51 @@ class _ListAttendanceSessionsPageState
         loading = false;
       });
     } else {
-      print('Gagal load sesi absensi.');
+      setState(() => loading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Daftar Sesi Absensi'),
-        backgroundColor: Colors.blue,
-      ),
+      appBar:
+          const CustomPageAppBar(icon: Icons.people_alt, title: 'Sesi Absensi'),
+      bottomNavigationBar: const EmptyBottomBar(),
       body: loading
           ? Center(child: CircularProgressIndicator())
           : sessions.isEmpty
               ? Center(child: Text('Belum ada sesi absensi untuk kelas ini.'))
               : ListView.builder(
                   itemCount: sessions.length,
+                  padding: const EdgeInsets.all(16),
                   itemBuilder: (context, index) {
                     final session = sessions[index];
                     return Card(
-                      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      elevation: 2,
+                      margin: const EdgeInsets.only(bottom: 12),
                       child: ListTile(
-                        title: Text('Kode: ${session['code']}'),
+                        title: Text('Kode: ${session['code']}',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            SizedBox(height: 4),
                             Text('Kelas: ${session['kelas']}'),
                             Text('Tanggal: ${session['tanggal']}'),
                             Text(
                                 'Jam: ${session['jam_mulai']} - ${session['jam_selesai']}'),
                           ],
                         ),
-                        trailing: Icon(Icons.arrow_forward),
+                        trailing: Icon(Icons.arrow_forward_ios),
                         onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => ManageAbsensiPage(
                                 sessionId: session['id'],
-                                kelas: session['kelas'], // Tetap bawa kelas
+                                kelas: session['kelas'],
                               ),
                             ),
                           );

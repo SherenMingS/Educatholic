@@ -13,7 +13,7 @@ class _CreateAbsensiGuruPageState extends State<CreateAbsensiGuruPage> {
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
   bool _loading = false;
-  String? generatedCode; // Simpan kode yang berhasil dibuat
+  String? generatedCode;
 
   Future<void> _pickDate() async {
     DateTime? picked = await showDatePicker(
@@ -140,14 +140,16 @@ class _CreateAbsensiGuruPageState extends State<CreateAbsensiGuruPage> {
     );
   }
 
-  Widget _buildButton(String text, VoidCallback onPressed, {Color? color}) {
+  Widget _buildButton(String text, VoidCallback onPressed,
+      {Color? color, Color? textColor}) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: color ?? Colors.blue,
-          padding: EdgeInsets.symmetric(vertical: 15),
+          foregroundColor: textColor ?? Colors.white,
+          padding: EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
@@ -163,55 +165,117 @@ class _CreateAbsensiGuruPageState extends State<CreateAbsensiGuruPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Buat Sesi Absensi'),
-        backgroundColor: Colors.blue,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            _buildButton(
-              _selectedDate == null
-                  ? 'Pilih Tanggal'
-                  : 'Tanggal: ${_selectedDate!.toLocal().toString().split(' ')[0]}',
-              _pickDate,
-              color: Colors.blue.shade100,
-            ),
-            SizedBox(height: 10),
-            _buildButton(
-              _startTime == null
-                  ? 'Pilih Jam Mulai'
-                  : 'Jam Mulai: ${_startTime!.format(context)}',
-              _pickStartTime,
-              color: Colors.blue.shade100,
-            ),
-            SizedBox(height: 10),
-            _buildButton(
-              _endTime == null
-                  ? 'Pilih Jam Selesai'
-                  : 'Jam Selesai: ${_endTime!.format(context)}',
-              _pickEndTime,
-              color: Colors.blue.shade100,
-            ),
-            SizedBox(height: 30),
-            _loading
-                ? const CircularProgressIndicator()
-                : _buildButton(
-                    'Buat Absensi', _submitAbsensi,
-                    color: Colors.black87
-                        .withOpacity(0.8) // Set opacity to 80%
-                        .withAlpha(255), // Set alpha to 255 (fully opaque)
+      backgroundColor: Colors.white,
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(60),
+        child: ClipRRect(
+          borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(24),
+            bottomRight: Radius.circular(24),
+          ),
+          child: AppBar(
+            backgroundColor: Colors.blue,
+            elevation: 0,
+            leading: Padding(
+              padding: const EdgeInsets.only(left: 12),
+              child: InkWell(
+                onTap: () => Navigator.pop(context),
+                borderRadius: BorderRadius.circular(30),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
                   ),
-            SizedBox(height: 20),
-            generatedCode != null
-                ? _buildButton(
-                    'Lihat Kode Absen',
-                    _showKodeDialog,
-                    color: Colors.blue.shade100,
-                  )
-                : SizedBox.shrink(),
-          ],
+                  padding: EdgeInsets.all(6),
+                  child: Icon(Icons.arrow_back, color: Colors.blue),
+                ),
+              ),
+            ),
+            centerTitle: true,
+            title: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.qr_code, color: Colors.white, size: 20),
+                SizedBox(width: 6),
+                Text(
+                  'Buat Sesi Absensi',
+                  style: TextStyle(fontSize: 16, color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            children: [
+              _buildButton(
+                _selectedDate == null
+                    ? '📅 Pilih Tanggal'
+                    : '📅 ${_selectedDate!.toLocal().toString().split(' ')[0]}',
+                _pickDate,
+                color: Colors.blue.shade50,
+                textColor: Colors.blue,
+              ),
+              SizedBox(height: 12),
+              _buildButton(
+                _startTime == null
+                    ? '🕒 Pilih Jam Mulai'
+                    : '🕒 Jam Mulai: ${_startTime!.format(context)}',
+                _pickStartTime,
+                color: Colors.blue.shade50,
+                textColor: Colors.blue,
+              ),
+              SizedBox(height: 12),
+              _buildButton(
+                _endTime == null
+                    ? '🕘 Pilih Jam Selesai'
+                    : '🕘 Jam Selesai: ${_endTime!.format(context)}',
+                _pickEndTime,
+                color: Colors.blue.shade50,
+                textColor: Colors.blue,
+              ),
+              SizedBox(height: 30),
+              _loading
+                  ? const CircularProgressIndicator()
+                  : _buildButton(
+                      '✅ Buat Absensi',
+                      _submitAbsensi,
+                      color: Colors.blue,
+                      textColor: Colors.white,
+                    ),
+              SizedBox(height: 20),
+              if (generatedCode != null)
+                _buildButton(
+                  '🔐 Lihat Kode Absen',
+                  _showKodeDialog,
+                  color: Colors.lightBlue.shade100,
+                  textColor: Colors.blue.shade800,
+                ),
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: BottomAppBar(
+        elevation: 8,
+        color: Colors.blue,
+        child: SizedBox(
+          height: 48, // 👈 Biar kelihatan
+          child: Center(
+            child: Text(
+              "", // Kosongin aja teksnya
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
         ),
       ),
     );

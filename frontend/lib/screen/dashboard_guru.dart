@@ -10,6 +10,7 @@ import 'materi_guru.dart';
 import 'quizlist_guru.dart';
 import 'studentlist_guru.dart';
 import 'listabsensi_guru.dart';
+import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'createabsensi_guru.dart';
 
 class DashboardGuru extends StatefulWidget {
@@ -106,16 +107,34 @@ class _DashboardGuruState extends State<DashboardGuru> {
   }
 
   void _onItemTapped(int index) {
-    if (index == 2) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => ProfileGuruPage()),
-      );
-    } else {
-      setState(() {
-        _selectedIndex = index;
-      });
+    if (index == _selectedIndex) return;
+
+    switch (index) {
+      case 0: // Materi (Manage Kelas)
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => MateriGuruPage()),
+        );
+        break;
+
+      case 1: // Home
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => DashboardGuru()),
+        );
+        break;
+
+      case 2: // Profile
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => ProfileGuruPage()),
+        );
+        break;
     }
+
+    setState(() {
+      _selectedIndex = index;
+    });
   }
 
   @override
@@ -323,7 +342,7 @@ class _DashboardGuruState extends State<DashboardGuru> {
             MaterialPageRoute(builder: (context) => QuizListPage()),
           );
         }),
-        _managementCard(Icons.leaderboard, "Manage Leaderboard", () async {
+        _managementCard(Icons.leaderboard, "Nilai Siswa", () async {
           SharedPreferences prefs = await SharedPreferences.getInstance();
           String? token = prefs.getString('token');
           String? kelas = prefs.getString('kelas_guru');
@@ -341,24 +360,24 @@ class _DashboardGuruState extends State<DashboardGuru> {
             );
           }
         }),
-        _managementCard(Icons.people, "Manage Siswa", () async {
-          SharedPreferences prefs = await SharedPreferences.getInstance();
-          String? token = prefs.getString('token');
-          String? kelas = prefs.getString('kelas_guru');
-          if (kelas != null && token != null) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    StudentListPage(kelas: kelas, token: token),
-              ),
-            );
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text("Silakan pilih kelas terlebih dahulu")),
-            );
-          }
-        }),
+        // _managementCard(Icons.people, "Manage Siswa", () async {
+        //   SharedPreferences prefs = await SharedPreferences.getInstance();
+        //   String? token = prefs.getString('token');
+        //   String? kelas = prefs.getString('kelas_guru');
+        //   if (kelas != null && token != null) {
+        //     Navigator.push(
+        //       context,
+        //       MaterialPageRoute(
+        //         builder: (context) =>
+        //             StudentListPage(kelas: kelas, token: token),
+        //       ),
+        //     );
+        //   } else {
+        //     ScaffoldMessenger.of(context).showSnackBar(
+        //       SnackBar(content: Text("Silakan pilih kelas terlebih dahulu")),
+        //     );
+        //   }
+        // }),
       ],
     );
   }
@@ -375,44 +394,42 @@ class _DashboardGuruState extends State<DashboardGuru> {
   }
 
   Widget _buildBottomNavBar() {
-    return BottomNavigationBar(
-      currentIndex: _selectedIndex,
-      onTap: _onItemTapped,
-      backgroundColor: Colors.blue,
-      selectedItemColor: Colors.white,
-      unselectedItemColor: Colors.white70,
-      showSelectedLabels: false,
-      showUnselectedLabels: false,
+    return CurvedNavigationBar(
+      backgroundColor: Colors.transparent,
+      color: Colors.blue, // Sesuaikan dengan tema utama
+      height: 65,
+      index: _selectedIndex,
+      animationDuration: const Duration(milliseconds: 300),
       items: [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.menu_book),
-          label: "Manage Kelas",
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home),
-          label: "Home",
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.person),
-          label: "Profile",
-        ),
+        Icon(Icons.menu_book,
+            size: 28,
+            color: _selectedIndex == 0 ? Colors.yellow : Colors.white),
+        Icon(Icons.home,
+            size: 28,
+            color: _selectedIndex == 1 ? Colors.yellow : Colors.white),
+        Icon(Icons.person,
+            size: 28,
+            color: _selectedIndex == 2 ? Colors.yellow : Colors.white),
       ],
+      onTap: (index) {
+        _onItemTapped(index);
+      },
     );
-  }
 
-  Widget _buildProgressBar(String title, double value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: TextStyle(fontSize: 14)),
-        SizedBox(height: 5),
-        LinearProgressIndicator(
-          value: value,
-          backgroundColor: Colors.blue.shade100,
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-        ),
-        SizedBox(height: 10),
-      ],
-    );
+    Widget _buildProgressBar(String title, double value) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: TextStyle(fontSize: 14)),
+          SizedBox(height: 5),
+          LinearProgressIndicator(
+            value: value,
+            backgroundColor: Colors.blue.shade100,
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+          ),
+          SizedBox(height: 10),
+        ],
+      );
+    }
   }
 }

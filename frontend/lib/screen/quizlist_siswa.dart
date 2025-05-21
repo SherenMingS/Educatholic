@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/quiz.dart';
 import '../services/api_service.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
+import '../widgets/custom_appbar.dart';
 
 class StudentQuizListPage extends StatefulWidget {
   @override
@@ -35,7 +36,6 @@ class _StudentQuizListPageState extends State<StudentQuizListPage> {
       token = savedToken;
       _fetchQuizzes(savedClass);
     } else {
-      print("Token atau Kelas tidak ditemukan");
       setState(() => isLoading = false);
     }
   }
@@ -65,45 +65,28 @@ class _StudentQuizListPageState extends State<StudentQuizListPage> {
     switch (index) {
       case 0:
         Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => MateriPage()),
-        );
+            context, MaterialPageRoute(builder: (_) => MateriPage()));
         break;
       case 1:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => StudentQuizListPage()),
-        );
         break;
       case 2:
         Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => DashboardSiswa()),
-        );
+            context, MaterialPageRoute(builder: (_) => DashboardSiswa()));
         break;
       case 3:
         SharedPreferences prefs = await SharedPreferences.getInstance();
         String? savedToken = prefs.getString('token');
-
         if (savedToken != null) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
                 builder: (_) => LeaderboardScreen(token: savedToken)),
           );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Token tidak ditemukan')),
-          );
         }
         break;
       case 4:
         Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => ProfilePage()),
-        );
-        break;
-      default:
+            context, MaterialPageRoute(builder: (_) => ProfilePage()));
         break;
     }
   }
@@ -111,143 +94,86 @@ class _StudentQuizListPageState extends State<StudentQuizListPage> {
   void _checkQuizStatus(int quizId) async {
     try {
       final result = await ApiService.checkQuizStatus(token!, quizId);
-
-      // Jika statusnya berhasil, lanjutkan ke halaman kuis
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => QuizPage(quizId: quizId)),
       );
     } catch (e) {
-      // Jika error, tampilkan dialog error
-      if (e.toString().contains('Anda sudah mengerjakan kuis ini')) {
-        _showQuizAlreadyCompletedDialog();
+      if (e.toString().contains('sudah mengerjakan')) {
+        _showDialog("Peringatan", "Anda sudah mengerjakan kuis ini.");
       } else {
-        _showErrorDialog();
+        _showDialog("Error", "Terjadi kesalahan saat memeriksa status kuis.");
       }
-      print('Error: $e'); // Log error untuk debugging
     }
   }
 
-// Dialog untuk menampilkan jika kuis sudah dikerjakan
-  void _showQuizAlreadyCompletedDialog() {
+  void _showDialog(String title, String message) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Peringatan"),
-          content: Text("Anda sudah mengerjakan kuis ini."),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Menutup dialog
-              },
-              child: Text("OK"),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-// Dialog untuk menampilkan jika materi belum dibaca (locked)
-  void _showQuizLockedDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Peringatan"),
-          content: Text("Anda perlu membaca materi terlebih dahulu."),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Menutup dialog
-              },
-              child: Text("OK"),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-// Dialog error untuk pengecekan kuis gagal
-  void _showErrorDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Error"),
-          content: Text("Terjadi kesalahan dalam memeriksa status kuis."),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Menutup dialog
-              },
-              child: Text("OK"),
-            ),
-          ],
-        );
-      },
+      builder: (_) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text("OK"))
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Daftar Kuis Siswa'),
-        backgroundColor: Colors.blue,
-      ),
+      appBar:
+          CustomPageAppBar(title: 'Daftar Kuis Siswa', icon: Icons.assignment),
+      bottomNavigationBar: _buildCurvedNavBar(),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : quizzes.isEmpty
-              ? const Center(child: Text('Belum ada kuis tersedia'))
+              ? Center(child: Text('Belum ada kuis tersedia'))
               : ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16),
                   itemCount: quizzes.length,
                   itemBuilder: (context, index) =>
                       _buildQuizCard(quizzes[index]),
                 ),
-      bottomNavigationBar: _buildCurvedNavBar(),
     );
   }
 
   Widget _buildQuizCard(Quiz quiz) {
-    final isLocked = !quiz.isRead; // If the material is not read, lock the quiz
+    final isLocked = !quiz.isRead;
+    final theme = Theme.of(context);
 
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      color: theme.cardColor,
+      margin: EdgeInsets.symmetric(vertical: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       elevation: 3,
       child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
+        contentPadding: EdgeInsets.all(16),
         leading: Icon(
           isLocked ? Icons.lock : Icons.assignment,
-          color: isLocked ? Colors.grey : Colors.blue,
+          color: isLocked ? Colors.grey : theme.iconTheme.color,
         ),
         title: Text(
           quiz.title,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.onSurface,
+          ),
         ),
         subtitle: Text(
           "Kelas: ${quiz.kelas} | ${quiz.questionCount} Soal",
-          style: TextStyle(
-            fontSize: 14,
-            color: isLocked ? Colors.grey : Colors.black54,
-          ),
+          style: theme.textTheme.bodyMedium,
         ),
         trailing: Icon(
           isLocked ? Icons.lock : Icons.arrow_forward_ios,
           size: 18,
-          color: isLocked ? Colors.grey : Colors.blue,
+          color: isLocked ? Colors.grey : theme.iconTheme.color,
         ),
         onTap: isLocked
-            ? () {
-                _showQuizLockedDialog(); // Show locked dialog
-              }
-            : () {
-                _checkQuizStatus(quiz.id); // Check if the quiz can be attempted
-              },
+            ? () => _showDialog("Peringatan", "Baca materi terlebih dahulu.")
+            : () => _checkQuizStatus(quiz.id),
       ),
     );
   }
@@ -258,7 +184,7 @@ class _StudentQuizListPageState extends State<StudentQuizListPage> {
       color: Colors.blue,
       height: 70,
       index: _selectedIndex,
-      animationDuration: const Duration(milliseconds: 300),
+      animationDuration: Duration(milliseconds: 300),
       items: [
         Icon(Icons.menu_book,
             size: 28,

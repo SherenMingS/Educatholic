@@ -4,30 +4,12 @@ import '../models/quiz.dart';
 import '../services/api_service.dart';
 import 'tambahquiz_guru.dart';
 import 'editquiz_guru.dart';
+import 'package:frontend/widgets/custom_appbar.dart';
+import 'package:frontend/widgets/empty_bottombar.dart';
 
 class QuizListPage extends StatefulWidget {
   @override
   _QuizListPageState createState() => _QuizListPageState();
-}
-
-Future<bool> _showDeleteConfirmation(BuildContext context) async {
-  return await showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text("Konfirmasi Hapus"),
-      content: Text("Apakah Anda yakin ingin menghapus kuis ini?"),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: Text("Batal"),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: Text("Hapus"),
-        ),
-      ],
-    ),
-  );
 }
 
 class _QuizListPageState extends State<QuizListPage> {
@@ -57,9 +39,7 @@ class _QuizListPageState extends State<QuizListPage> {
   }
 
   Future<void> _fetchQuizzes() async {
-    setState(() {
-      isLoading = true;
-    });
+    setState(() => isLoading = true);
 
     try {
       final quizzesList = await ApiService.getQuizzes(token!, selectedClass!);
@@ -68,9 +48,7 @@ class _QuizListPageState extends State<QuizListPage> {
         isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        isLoading = false;
-      });
+      setState(() => isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Gagal memuat kuis: $e")),
       );
@@ -78,7 +56,7 @@ class _QuizListPageState extends State<QuizListPage> {
   }
 
   Future<void> _deleteQuiz(int quizId) async {
-    bool confirmDelete = await showDialog(
+    bool confirm = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text("Konfirmasi Hapus"),
@@ -96,13 +74,13 @@ class _QuizListPageState extends State<QuizListPage> {
       ),
     );
 
-    if (confirmDelete) {
+    if (confirm) {
       try {
         await ApiService.deleteQuiz(quizId, token!);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Quiz berhasil dihapus")),
         );
-        _fetchQuizzes(); // Refresh daftar kuis
+        _fetchQuizzes();
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Gagal menghapus quiz: $e")),
@@ -114,10 +92,11 @@ class _QuizListPageState extends State<QuizListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Daftar Kuis (${selectedClass ?? "Loading..."})'),
-        backgroundColor: Colors.blue,
+      appBar: CustomPageAppBar(
+        icon: Icons.assignment,
+        title: 'Daftar Kuis (${selectedClass ?? "Loading..."})',
       ),
+      bottomNavigationBar: const EmptyBottomBar(),
       body: isLoading
           ? Center(child: CircularProgressIndicator())
           : quizzes.isEmpty
@@ -127,7 +106,6 @@ class _QuizListPageState extends State<QuizListPage> {
                   itemCount: quizzes.length,
                   itemBuilder: (context, index) {
                     final quiz = quizzes[index];
-
                     return Card(
                       margin: EdgeInsets.symmetric(vertical: 8),
                       shape: RoundedRectangleBorder(
@@ -185,21 +163,12 @@ class _QuizListPageState extends State<QuizListPage> {
                                       builder: (context) =>
                                           EditQuizPage(quiz: quiz)),
                                 );
-
-                                if (result == true) {
-                                  _fetchQuizzes(); // Refresh daftar kuis
-                                }
+                                if (result == true) _fetchQuizzes();
                               },
                             ),
                             IconButton(
                               icon: Icon(Icons.delete, color: Colors.red),
-                              onPressed: () async {
-                                bool confirm =
-                                    await _showDeleteConfirmation(context);
-                                if (confirm) {
-                                  await _deleteQuiz(quiz.id);
-                                }
-                              },
+                              onPressed: () => _deleteQuiz(quiz.id),
                             ),
                           ],
                         ),
@@ -213,10 +182,7 @@ class _QuizListPageState extends State<QuizListPage> {
             context,
             MaterialPageRoute(builder: (context) => AddQuizPage()),
           );
-
-          if (result == true) {
-            _fetchQuizzes(); // Refresh daftar kuis
-          }
+          if (result == true) _fetchQuizzes();
         },
         child: Icon(Icons.add),
         backgroundColor: Colors.blue,

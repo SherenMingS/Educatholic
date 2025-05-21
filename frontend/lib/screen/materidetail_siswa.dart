@@ -5,6 +5,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:html' as html;
+import '../widgets/custom_appbar.dart';
+import '../widgets/empty_bottombar.dart';
 
 class MateriDetailPage extends StatefulWidget {
   final int materiId;
@@ -79,10 +81,11 @@ class _MateriDetailPageState extends State<MateriDetailPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.blue,
-        title: Text(widget.materiJudul),
+      appBar: CustomPageAppBar(
+        title: widget.materiJudul,
+        icon: Icons.book, // Provide an appropriate icon
       ),
+      bottomNavigationBar: EmptyBottomBar(),
       body: isLoading
           ? Center(child: CircularProgressIndicator())
           : materiDetail == null

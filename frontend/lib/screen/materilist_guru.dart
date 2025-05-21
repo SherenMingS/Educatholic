@@ -2,6 +2,7 @@ import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:frontend/screen/editmateri_guru.dart';
 import 'package:frontend/screen/materi_guru.dart';
+import 'package:frontend/screen/profile_guru.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:frontend/screen/dashboard_guru.dart';
@@ -64,25 +65,6 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
     }
   }
 
-  Future<void> _deleteMateri(int id) async {
-    final response = await http.delete(
-      Uri.parse('http://127.0.0.1:8000/api/materi/$id'),
-    );
-
-    if (response.statusCode == 200) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Materi berhasil dihapus")),
-      );
-      setState(() {
-        _fetchMateri(); // Refresh daftar materi setelah penghapusan
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Gagal menghapus materi")),
-      );
-    }
-  }
-
   Future<void> _showDeleteConfirmationDialog(int id) async {
     bool? confirm = await showDialog(
       context: context,
@@ -110,17 +92,72 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
     }
   }
 
+  Future<void> _deleteMateri(int id) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('token');
+
+    final response = await http.delete(
+      Uri.parse('http://127.0.0.1:8000/api/materi/$id'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Materi berhasil dihapus")),
+      );
+      await _fetchMateri(); // panggil ulang data
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Gagal menghapus materi")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.blue,
+        elevation: 0,
+        centerTitle: true,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: InkWell(
+            onTap: () => Navigator.pop(context),
+            borderRadius: BorderRadius.circular(30),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              padding: EdgeInsets.all(6),
+              child: Icon(Icons.arrow_back, color: Colors.blue),
+            ),
+          ),
+        ),
         title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.menu_book, color: Colors.white),
-            SizedBox(width: 8),
-            Text("Kelola Materi"),
+            Icon(Icons.menu_book, color: Colors.white, size: 20),
+            SizedBox(width: 6),
+            Text(
+              'Materi',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
       ),
@@ -206,14 +243,17 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
               },
             ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          final result = await Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => KelolaMateriPage()),
           );
-          // Navigasi ke halaman tambah materi
+
+          if (result == true) {
+            _fetchMateri(); // 🔁 Refresh data setelah kembali
+          }
         },
-        child: Icon(Icons.add),
+        child: const Icon(Icons.add),
         backgroundColor: Colors.blue,
       ),
       bottomNavigationBar: CurvedNavigationBar(
@@ -247,6 +287,10 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
               case 1:
                 Navigator.pushReplacement(context,
                     MaterialPageRoute(builder: (context) => DashboardGuru()));
+                break;
+              case 2:
+                Navigator.pushReplacement(context,
+                    MaterialPageRoute(builder: (context) => ProfileGuruPage()));
                 break;
               default:
                 break;

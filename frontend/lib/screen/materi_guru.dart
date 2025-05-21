@@ -1,12 +1,14 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'dart:io' if (dart.library.html) 'dart:html';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'dart:convert';
-import 'dart:typed_data';
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:frontend/widgets/custom_appbar.dart';
+import 'package:frontend/widgets/empty_bottombar.dart';
 
 class KelolaMateriPage extends StatefulWidget {
   @override
@@ -14,14 +16,15 @@ class KelolaMateriPage extends StatefulWidget {
 }
 
 class _KelolaMateriPageState extends State<KelolaMateriPage> {
-  final TextEditingController _judulController = TextEditingController();
-  final TextEditingController _deskripsiController = TextEditingController();
-  final TextEditingController _kelasController = TextEditingController();
-  final TextEditingController _poinController = TextEditingController();
-  final TextEditingController _ayatController = TextEditingController();
-  final TextEditingController _isiAyatController = TextEditingController();
-  final TextEditingController _tanggalController = TextEditingController();
+  final _judulController = TextEditingController();
+  final _deskripsiController = TextEditingController();
+  final _kelasController = TextEditingController();
+  final _poinController = TextEditingController();
+  final _ayatController = TextEditingController();
+  final _isiAyatController = TextEditingController();
+  final _tanggalController = TextEditingController();
 
+  List<dynamic> materiList = [];
   Uint8List? _selectedFileBytes;
   String? _selectedFileName;
 
@@ -92,13 +95,49 @@ class _KelolaMateriPageState extends State<KelolaMateriPage> {
     }
   }
 
+  
+
+  Future<void> _fetchMateri() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? kelas = prefs.getString('kelas_guru');
+    String? token = prefs.getString('token');
+
+    if (kelas == null || token == null) {
+      print("❌ Token atau kelas tidak ditemukan di SharedPreferences");
+      return;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('http://127.0.0.1:8000/api/materi?kelas=$kelas'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      print("🔍 Status Code: ${response.statusCode}");
+      print("🔍 Response Body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        setState(() {
+          materiList = json['materi'];
+        });
+      } else {
+        print("❌ Gagal mengambil materi: ${response.body}");
+      }
+    } catch (e) {
+      print("❌ Error saat fetch materi: $e");
+    }
+  }
+
   Future<void> _pickFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf', 'doc', 'docx'],
       withData: true,
     );
-
     if (result != null) {
       setState(() {
         _selectedFileBytes = result.files.single.bytes;
@@ -113,7 +152,6 @@ class _KelolaMateriPageState extends State<KelolaMateriPage> {
         'POST',
         Uri.parse('http://127.0.0.1:8000/api/materi'),
       );
-
       request.fields['judul'] = _judulController.text;
       request.fields['deskripsi'] = _deskripsiController.text;
       request.fields['kelas'] = _kelasController.text;
@@ -128,7 +166,6 @@ class _KelolaMateriPageState extends State<KelolaMateriPage> {
         request.headers['Authorization'] = 'Bearer $token';
       }
 
-      // 🟡 Tambahkan hanya jika file ada
       if (_selectedFileBytes != null && _selectedFileName != null) {
         request.files.add(
           http.MultipartFile.fromBytes(
@@ -142,201 +179,22 @@ class _KelolaMateriPageState extends State<KelolaMateriPage> {
       var response = await request.send();
       var responseBody = await response.stream.bytesToString();
 
-      print("📦 Status Code: ${response.statusCode}");
-      print("📨 Response Body: $responseBody");
-
       if (response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Materi berhasil diunggah!")),
         );
+        Navigator.pop(
+            context, true); // balik ke halaman sebelumnya dan trigger refresh
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Gagal mengunggah materi: $responseBody")),
         );
       }
     } catch (e) {
-      print("❌ Error: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Terjadi kesalahan saat mengunggah materi!")),
       );
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.blue,
-        title: Text("Materi", style: TextStyle(fontWeight: FontWeight.bold)),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildTextField("Judul", _judulController),
-              _buildTextField("Deskripsi", _deskripsiController,
-                  isMultiline: true),
-              _buildReadOnlyField("Kelas", _kelasController),
-              _buildTextField("Poin-poin", _poinController),
-              SizedBox(height: 10),
-              Text("Referensi Alkitab",
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              DropdownSearch<String>(
-                items: books,
-                selectedItem: selectedBook,
-                popupProps: PopupProps.menu(
-                  showSearchBox: true,
-                  searchFieldProps: TextFieldProps(
-                    decoration: InputDecoration(
-                      hintText: 'Cari kitab...',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-                dropdownDecoratorProps: DropDownDecoratorProps(
-                  dropdownSearchDecoration: InputDecoration(
-                    labelText: "Pilih Kitab",
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                onChanged: (val) {
-                  setState(() {
-                    selectedBook = val;
-                    selectedChapter = null;
-                    selectedVerse = null;
-                    _ayatController.clear();
-                    _isiAyatController.clear();
-                    chapters.clear();
-                    verses.clear();
-                  });
-                  if (val != null) fetchChapters(val);
-                },
-              ),
-              if (selectedBook != null)
-                DropdownButton<int>(
-                  isExpanded: true,
-                  hint: Text("Pilih Pasal"),
-                  value: selectedChapter,
-                  items: chapters
-                      .map((ch) =>
-                          DropdownMenuItem(value: ch, child: Text("Pasal $ch")))
-                      .toList(),
-                  onChanged: (val) {
-                    setState(() {
-                      selectedChapter = val;
-                      selectedVerse = null;
-                      _ayatController.clear();
-                      _isiAyatController.clear();
-                      verses.clear();
-                    });
-                    fetchVerses(selectedBook!, val!);
-                  },
-                ),
-              if (selectedChapter != null)
-                DropdownButton<int>(
-                  isExpanded: true,
-                  hint: Text("Pilih Ayat"),
-                  value: selectedVerse,
-                  items: verses
-                      .map((v) =>
-                          DropdownMenuItem(value: v, child: Text("Ayat $v")))
-                      .toList(),
-                  onChanged: (val) {
-                    setState(() {
-                      selectedVerse = val;
-                    });
-                    fetchIsiAyat();
-                  },
-                ),
-              _buildTextField("Ayat", _ayatController),
-              _buildTextField("Isi Ayat", _isiAyatController,
-                  isMultiline: true),
-              SizedBox(height: 10),
-              Text("File",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ElevatedButton(
-                onPressed: _pickFile,
-                child: Text(_selectedFileName ?? "Pilih File"),
-                style:
-                    ElevatedButton.styleFrom(backgroundColor: Colors.grey[300]),
-              ),
-              SizedBox(height: 10),
-              Text("Tanggal Tayang",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              TextField(
-                controller: _tanggalController,
-                decoration: InputDecoration(
-                  suffixIcon: IconButton(
-                    icon: Icon(Icons.calendar_today),
-                    onPressed: _selectDate,
-                  ),
-                ),
-                readOnly: true,
-              ),
-              SizedBox(height: 20),
-              Center(
-                child: ElevatedButton(
-                  onPressed: _uploadMateri,
-                  child: Text("Upload", style: TextStyle(fontSize: 18)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.blue, // warna teks
-                    side: BorderSide(color: Colors.blue),
-                    padding: EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField(String label, TextEditingController controller,
-      {bool isMultiline = false}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        SizedBox(height: 5),
-        TextField(
-          controller: controller,
-          maxLines: isMultiline ? 3 : 1,
-          decoration: InputDecoration(border: OutlineInputBorder()),
-        ),
-        SizedBox(height: 10),
-      ],
-    );
-  }
-
-  Widget _buildReadOnlyField(String label, TextEditingController controller) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        SizedBox(height: 5),
-        TextField(
-          controller: controller,
-          readOnly: true,
-          decoration: InputDecoration(
-            border: OutlineInputBorder(),
-            filled: true,
-            fillColor: Colors.grey[200],
-          ),
-        ),
-        SizedBox(height: 10),
-      ],
-    );
   }
 
   Future<void> _selectDate() async {
@@ -346,11 +204,153 @@ class _KelolaMateriPageState extends State<KelolaMateriPage> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-
     if (pickedDate != null) {
       setState(() {
         _tanggalController.text = DateFormat('yyyy-MM-dd').format(pickedDate);
       });
     }
+  }
+
+  Widget _textFieldOutline(String label, TextEditingController controller,
+      {bool isMultiline = false, bool readOnly = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment:
+            isMultiline ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+        children: [
+          SizedBox(width: 100, child: Text(label)),
+          Expanded(
+            child: TextField(
+              controller: controller,
+              readOnly: readOnly,
+              maxLines: isMultiline ? 3 : 1,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.grey),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: const CustomPageAppBar(icon: Icons.menu_book, title: 'Materi'),
+      bottomNavigationBar: const EmptyBottomBar(),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _textFieldOutline("Judul", _judulController),
+            _textFieldOutline("Deskripsi", _deskripsiController,
+                isMultiline: true),
+            _textFieldOutline("Kelas", _kelasController, readOnly: true),
+            _textFieldOutline("Poin-poin", _poinController),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text("Referensi Alkitab",
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+            DropdownSearch<String>(
+              items: books,
+              selectedItem: selectedBook,
+              popupProps: PopupProps.menu(showSearchBox: true),
+              dropdownDecoratorProps: DropDownDecoratorProps(
+                dropdownSearchDecoration: InputDecoration(
+                    labelText: "Pilih Kitab", border: OutlineInputBorder()),
+              ),
+              onChanged: (val) {
+                setState(() {
+                  selectedBook = val;
+                  selectedChapter = null;
+                  selectedVerse = null;
+                  _ayatController.clear();
+                  _isiAyatController.clear();
+                  chapters.clear();
+                  verses.clear();
+                });
+                if (val != null) fetchChapters(val);
+              },
+            ),
+            if (selectedBook != null)
+              DropdownButton<int>(
+                isExpanded: true,
+                hint: const Text("Pilih Pasal"),
+                value: selectedChapter,
+                items: chapters
+                    .map((ch) =>
+                        DropdownMenuItem(value: ch, child: Text("Pasal $ch")))
+                    .toList(),
+                onChanged: (val) {
+                  setState(() {
+                    selectedChapter = val;
+                    selectedVerse = null;
+                    _ayatController.clear();
+                    _isiAyatController.clear();
+                    verses.clear();
+                  });
+                  fetchVerses(selectedBook!, val!);
+                },
+              ),
+            if (selectedChapter != null)
+              DropdownButton<int>(
+                isExpanded: true,
+                hint: const Text("Pilih Ayat"),
+                value: selectedVerse,
+                items: verses
+                    .map((v) =>
+                        DropdownMenuItem(value: v, child: Text("Ayat $v")))
+                    .toList(),
+                onChanged: (val) {
+                  setState(() => selectedVerse = val);
+                  fetchIsiAyat();
+                },
+              ),
+            _textFieldOutline("Ayat", _ayatController),
+            _textFieldOutline("Isi Ayat", _isiAyatController,
+                isMultiline: true),
+            _textFieldOutline(
+                "File", TextEditingController(text: _selectedFileName ?? "")),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton(
+                onPressed: _pickFile,
+                style:
+                    ElevatedButton.styleFrom(backgroundColor: Colors.grey[300]),
+                child: const Text("Choose File",
+                    style: TextStyle(color: Colors.black)),
+              ),
+            ),
+            _textFieldOutline("Tayang", _tanggalController, readOnly: true),
+            Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                icon: const Icon(Icons.calendar_today),
+                onPressed: _selectDate,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _uploadMateri,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal,
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+                elevation: 4,
+              ),
+              child: const Text("Upload", style: TextStyle(fontSize: 16)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

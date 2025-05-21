@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:shimmer/shimmer.dart'; // Jangan lupa install shimmer: ^2.0.0
+import 'package:shimmer/shimmer.dart';
 
 import 'package:frontend/screen/materi_siswa.dart';
 import 'package:frontend/screen/quizlist_siswa.dart';
@@ -9,6 +9,7 @@ import 'package:frontend/screen/dashboard_siswa.dart';
 import 'package:frontend/screen/leaderboard_siswa.dart';
 import 'package:frontend/screen/profile_siswa.dart';
 import 'package:frontend/services/api_service.dart';
+import '../widgets/custom_appbar.dart';
 import 'materidetail_siswa.dart';
 
 class MateriPage extends StatefulWidget {
@@ -21,7 +22,7 @@ class _MateriPageState extends State<MateriPage> {
   String? token;
   String? kelas;
   bool isLoading = true;
-  int _selectedIndex = 0; // Materi Tab
+  int _selectedIndex = 0;
 
   @override
   void initState() {
@@ -72,31 +73,19 @@ class _MateriPageState extends State<MateriPage> {
 
     switch (index) {
       case 0:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => MateriPage()),
-        );
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MateriPage()));
         break;
       case 1:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => StudentQuizListPage()),
-        );
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => StudentQuizListPage()));
         break;
       case 2:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => DashboardSiswa()),
-        );
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => DashboardSiswa()));
         break;
       case 3:
         SharedPreferences prefs = await SharedPreferences.getInstance();
         String? token = prefs.getString('token');
         if (token != null) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => LeaderboardScreen(token: token)),
-          );
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => LeaderboardScreen(token: token)));
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Token tidak ditemukan')),
@@ -104,12 +93,7 @@ class _MateriPageState extends State<MateriPage> {
         }
         break;
       case 4:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => ProfilePage()),
-        );
-        break;
-      default:
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => ProfilePage()));
         break;
     }
   }
@@ -122,21 +106,11 @@ class _MateriPageState extends State<MateriPage> {
       index: _selectedIndex,
       animationDuration: const Duration(milliseconds: 300),
       items: [
-        Icon(Icons.menu_book,
-            size: 28,
-            color: _selectedIndex == 0 ? Colors.yellow : Colors.white),
-        Icon(Icons.assignment,
-            size: 28,
-            color: _selectedIndex == 1 ? Colors.yellow : Colors.white),
-        Icon(Icons.home,
-            size: 28,
-            color: _selectedIndex == 2 ? Colors.yellow : Colors.white),
-        Icon(Icons.emoji_events,
-            size: 28,
-            color: _selectedIndex == 3 ? Colors.yellow : Colors.white),
-        Icon(Icons.person,
-            size: 28,
-            color: _selectedIndex == 4 ? Colors.yellow : Colors.white),
+        Icon(Icons.menu_book, size: 28, color: _selectedIndex == 0 ? Colors.yellow : Colors.white),
+        Icon(Icons.assignment, size: 28, color: _selectedIndex == 1 ? Colors.yellow : Colors.white),
+        Icon(Icons.home, size: 28, color: _selectedIndex == 2 ? Colors.yellow : Colors.white),
+        Icon(Icons.emoji_events, size: 28, color: _selectedIndex == 3 ? Colors.yellow : Colors.white),
+        Icon(Icons.person, size: 28, color: _selectedIndex == 4 ? Colors.yellow : Colors.white),
       ],
       onTap: _onItemTapped,
     );
@@ -145,7 +119,7 @@ class _MateriPageState extends State<MateriPage> {
   Widget _buildMateriList() {
     if (isLoading) {
       return ListView.builder(
-        itemCount: 5, // Dummy loading 5 shimmer
+        itemCount: 5,
         itemBuilder: (context, index) => _buildShimmerCard(),
       );
     } else if (materiList.isEmpty) {
@@ -155,8 +129,7 @@ class _MateriPageState extends State<MateriPage> {
           children: const [
             Icon(Icons.inbox, size: 80, color: Colors.blueGrey),
             SizedBox(height: 10),
-            Text("Tidak ada materi ditemukan",
-                style: TextStyle(fontSize: 18, color: Colors.blueGrey)),
+            Text("Tidak ada materi ditemukan", style: TextStyle(fontSize: 18, color: Colors.blueGrey)),
           ],
         ),
       );
@@ -202,12 +175,11 @@ class _MateriPageState extends State<MateriPage> {
             }
           : null,
       child: Opacity(
-        opacity: isTayang ? 1.0 : 0.5, // Jika belum tayang, tampil transparan
+        opacity: isTayang ? 1.0 : 0.5,
         child: Card(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: BorderSide(
-                color: isTayang ? Colors.blue : Colors.orange, width: 1),
+            side: BorderSide(color: isTayang ? Colors.blue : Colors.orange, width: 1),
           ),
           margin: const EdgeInsets.only(bottom: 12),
           child: Padding(
@@ -230,33 +202,30 @@ class _MateriPageState extends State<MateriPage> {
                     children: [
                       Text(
                         materi["judul"],
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                          color: Theme.of(context).textTheme.bodyLarge?.color,
                         ),
                       ),
                       const SizedBox(height: 6),
                       Row(
                         children: [
                           Container(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
+                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
                               color: isTayang ? Colors.green : Colors.orange,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               isTayang ? "✅ Sudah Tayang" : "🕓 Belum Tayang",
-                              style:
-                                  TextStyle(fontSize: 12, color: Colors.white),
+                              style: TextStyle(fontSize: 12, color: Colors.white),
                             ),
                           ),
                           SizedBox(width: 10),
                           Text(
                             "Tayang: ${materi['tanggal_tayang']}",
-                            style:
-                                TextStyle(fontSize: 12, color: Colors.black54),
+                            style: TextStyle(fontSize: 12, color: Colors.black54),
                           ),
                         ],
                       ),
@@ -281,9 +250,12 @@ class _MateriPageState extends State<MateriPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Materi Kelas ${kelas ?? ''}'),
-        backgroundColor: Colors.blue,
+      appBar: CustomPageAppBar(
+        title: 'Materi Kelas ${kelas ?? ''}',
+        icon: Icons.menu_book,
+        onBack: () {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => DashboardSiswa()));
+        },
       ),
       body: _buildMateriList(),
       floatingActionButton: FloatingActionButton(

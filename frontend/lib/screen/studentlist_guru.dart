@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import '../models/student.dart';
 import '../services/api_service.dart';
-import 'dashboard_guru.dart';
+import '../widgets/custom_appbar.dart';
+import '../widgets/empty_bottombar.dart';
 
 class StudentListPage extends StatefulWidget {
   final String kelas;
-  final String token; // Tambahkan token untuk autentikasi API
+  final String token;
 
   StudentListPage({required this.kelas, required this.token});
 
@@ -25,10 +26,11 @@ class _StudentListPageState extends State<StudentListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Kelas ${widget.kelas}'),
-        backgroundColor: Colors.blue,
+      appBar: CustomPageAppBar(
+        title: 'Kelas ${widget.kelas}',
+        icon: Icons.people, // Replace with the appropriate icon
       ),
+      bottomNavigationBar: EmptyBottomBar(),
       body: FutureBuilder<List<Student>>(
         future: students,
         builder: (context, snapshot) {

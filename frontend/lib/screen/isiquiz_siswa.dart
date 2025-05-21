@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:frontend/services/api_service.dart';
+import 'package:frontend/widgets/empty_bottombar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'hasilquiz_siswa.dart';
 
@@ -15,12 +16,12 @@ class QuizPage extends StatefulWidget {
 class _QuizPageState extends State<QuizPage> {
   Map<String, dynamic>? quizData;
   bool isLoading = true;
+  bool isStarted = false;
   String? token;
   int currentQuestionIndex = 0;
   List<String?> selectedAnswers = [];
   int _remainingSeconds = 0;
   Timer? _timer;
-  bool isStarted = false;
 
   bool isFiftyUsed = false;
   bool isExtraTimeUsed = false;
@@ -179,8 +180,9 @@ class _QuizPageState extends State<QuizPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading)
+    if (isLoading) {
       return Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
     var questions = quizData!['questions'];
     var current = questions[currentQuestionIndex];
@@ -193,165 +195,185 @@ class _QuizPageState extends State<QuizPage> {
     List<String> labels = ['A', 'B', 'C', 'D'];
     Set<int> eliminated = eliminatedOptionsMap[currentQuestionIndex] ?? {};
 
-    return Scaffold(
-      appBar:
-          AppBar(title: Text(quizData!['title']), backgroundColor: Colors.blue),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: isStarted
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(children: [
-                          Icon(Icons.timer),
-                          SizedBox(width: 4),
-                          Text(_formatTime(_remainingSeconds),
-                              style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold))
-                        ]),
-                        Row(
-                          children: List.generate(
-                            questions.length,
-                            (i) => Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 2),
-                              child: CircleAvatar(
-                                radius: 12,
-                                backgroundColor: i == currentQuestionIndex
-                                    ? Colors.blue
-                                    : Colors.grey,
-                                child: Text("${i + 1}",
-                                    style: TextStyle(
-                                        color: Colors.white, fontSize: 12)),
-                              ),
-                            ),
-                          ),
-                        )
-                      ]),
-                  SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+    return WillPopScope(
+      onWillPop: () async => !isStarted,
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.blue,
+          automaticallyImplyLeading: !isStarted,
+          title: Text(
+            quizData!['title'],
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          centerTitle: true,
+        ),
+        bottomNavigationBar: EmptyBottomBar(),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: isStarted
+              ? SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (!isFiftyUsed)
-                        IconButton(
-                          icon: Icon(Icons.filter_alt_off),
-                          tooltip: '50:50 (Hapus 2 opsi)',
-                          onPressed: _useFiftyFifty,
-                        ),
-                      if (!isExtraTimeUsed)
-                        IconButton(
-                          icon: Icon(Icons.timer),
-                          tooltip: 'Tambah 20 detik',
-                          onPressed: () {
-                            setState(() {
-                              _remainingSeconds += 20;
-                              isExtraTimeUsed = true;
-                            });
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text("⏱ Waktu ditambah 20 detik")));
-                          },
-                        ),
-                    ],
-                  ),
-                  SizedBox(height: 10),
-                  Text("Pertanyaan ${currentQuestionIndex + 1}",
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 10),
-                  Text(current['question'],
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 20),
-                  Column(
-                    children: List.generate(4, (i) {
-                      if (eliminated.contains(i)) return SizedBox.shrink();
-                      bool isSelected =
-                          selectedAnswers[currentQuestionIndex] == options[i];
-                      return Container(
-                        width: double.infinity,
-                        margin: EdgeInsets.only(bottom: 12),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(12),
-                          onTap: () => setState(() =>
-                              selectedAnswers[currentQuestionIndex] =
-                                  options[i]),
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                                vertical: 16, horizontal: 20),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? Colors.blue.shade50
-                                  : Colors.white,
-                              border: Border.all(
-                                color: isSelected
-                                    ? Colors.blue
-                                    : Colors.grey.shade400,
-                                width: 1.5,
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 14,
-                                  backgroundColor: isSelected
-                                      ? Colors.blue
-                                      : Colors.grey.shade300,
-                                  child: Text(
-                                    labels[i],
-                                    style: TextStyle(
-                                        color: Colors.white, fontSize: 14),
-                                  ),
-                                ),
-                                SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    options[i] ?? '-',
-                                    style: TextStyle(
+                      Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(children: [
+                              Icon(Icons.timer),
+                              SizedBox(width: 4),
+                              Text(_formatTime(_remainingSeconds),
+                                  style: TextStyle(
                                       fontSize: 16,
-                                      color: isSelected
-                                          ? Colors.blue[900]
-                                          : Colors.black87,
-                                    ),
+                                      fontWeight: FontWeight.bold))
+                            ]),
+                            Row(
+                              children: List.generate(
+                                questions.length,
+                                (i) => Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 2),
+                                  child: CircleAvatar(
+                                    radius: 12,
+                                    backgroundColor:
+                                        i == currentQuestionIndex
+                                            ? Colors.blue
+                                            : Colors.grey,
+                                    child: Text("${i + 1}",
+                                        style: TextStyle(
+                                            color: Colors.white, fontSize: 12)),
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-                  SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      ElevatedButton(
-                        onPressed: currentQuestionIndex > 0
-                            ? () => setState(() => currentQuestionIndex--)
-                            : null,
-                        child: Text("Sebelumnya"),
-                      ),
-                      currentQuestionIndex < questions.length - 1
-                          ? ElevatedButton(
-                              onPressed: () =>
-                                  setState(() => currentQuestionIndex++),
-                              child: Text("Selanjutnya"),
+                              ),
                             )
-                          : ElevatedButton(
-                              onPressed: _submitQuiz,
-                              child: Text("Selesai"),
+                          ]),
+                      SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if (!isFiftyUsed)
+                            IconButton(
+                              icon: Icon(Icons.filter_alt_off),
+                              tooltip: '50:50 (Hapus 2 opsi)',
+                              onPressed: _useFiftyFifty,
                             ),
+                          if (!isExtraTimeUsed)
+                            IconButton(
+                              icon: Icon(Icons.timer),
+                              tooltip: 'Tambah 20 detik',
+                              onPressed: () {
+                                setState(() {
+                                  _remainingSeconds += 20;
+                                  isExtraTimeUsed = true;
+                                });
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content:
+                                          Text("⏱ Waktu ditambah 20 detik")),
+                                );
+                              },
+                            ),
+                        ],
+                      ),
+                      SizedBox(height: 10),
+                      Text("Pertanyaan ${currentQuestionIndex + 1}",
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
+                      SizedBox(height: 10),
+                      Text(current['question'],
+                          style: TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.bold)),
+                      SizedBox(height: 20),
+                      Column(
+                        children: List.generate(4, (i) {
+                          if (eliminated.contains(i)) return SizedBox.shrink();
+                          bool isSelected =
+                              selectedAnswers[currentQuestionIndex] ==
+                                  options[i];
+                          return Container(
+                            width: double.infinity,
+                            margin: EdgeInsets.only(bottom: 12),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: () => setState(() =>
+                                  selectedAnswers[currentQuestionIndex] =
+                                      options[i]),
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                    vertical: 16, horizontal: 20),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? Colors.blue.shade50
+                                      : Colors.white,
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? Colors.blue
+                                        : Colors.grey.shade400,
+                                    width: 1.5,
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 14,
+                                      backgroundColor: isSelected
+                                          ? Colors.blue
+                                          : Colors.grey.shade300,
+                                      child: Text(
+                                        labels[i],
+                                        style: TextStyle(
+                                            color: Colors.white, fontSize: 14),
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        options[i] ?? '-',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: isSelected
+                                              ? Colors.blue[900]
+                                              : Colors.black87,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                      SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          ElevatedButton(
+                            onPressed: currentQuestionIndex > 0
+                                ? () => setState(
+                                    () => currentQuestionIndex--)
+                                : null,
+                            child: Text("Sebelumnya"),
+                          ),
+                          currentQuestionIndex < questions.length - 1
+                              ? ElevatedButton(
+                                  onPressed: () =>
+                                      setState(() => currentQuestionIndex++),
+                                  child: Text("Selanjutnya"),
+                                )
+                              : ElevatedButton(
+                                  onPressed: _submitQuiz,
+                                  child: Text("Selesai"),
+                                ),
+                        ],
+                      ),
                     ],
                   ),
-                ],
-              )
-            : Center(
-                child: Text("Menunggu untuk mulai kuis...",
-                    style: TextStyle(fontSize: 18))),
+                )
+              : Center(
+                  child: Text("Menunggu untuk mulai kuis...",
+                      style: TextStyle(fontSize: 18))),
+        ),
       ),
     );
   }

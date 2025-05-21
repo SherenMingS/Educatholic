@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import '../models/leaderboard.dart';
 import '../services/api_service.dart';
+import '../widgets/custom_appbar.dart';
+import '../widgets/empty_bottombar.dart';
 
 class TeacherLeaderboardScreen extends StatefulWidget {
   final String kelas;
   final String token;
 
-  const TeacherLeaderboardScreen(
-      {Key? key, required this.kelas, required this.token})
-      : super(key: key);
+  const TeacherLeaderboardScreen({
+    Key? key,
+    required this.kelas,
+    required this.token,
+  }) : super(key: key);
 
   @override
   _TeacherLeaderboardScreenState createState() =>
@@ -28,10 +32,11 @@ class _TeacherLeaderboardScreenState extends State<TeacherLeaderboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Leaderboard Kelas ${widget.kelas}'),
-        backgroundColor: Colors.blue,
+      appBar: CustomPageAppBar(
+        title: 'Nilai Kelas ${widget.kelas}',
+        icon: Icons.leaderboard, // Add an appropriate icon
       ),
+      bottomNavigationBar: EmptyBottomBar(),
       body: FutureBuilder<List<LeaderboardModel>>(
         future: leaderboardFuture,
         builder: (context, snapshot) {

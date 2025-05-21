@@ -4,6 +4,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:frontend/widgets/custom_appbar.dart';
+import 'package:frontend/widgets/empty_bottombar.dart';
 
 class EditMateriPage extends StatefulWidget {
   final int id;
@@ -14,6 +18,7 @@ class EditMateriPage extends StatefulWidget {
   final String? ayat;
   final String? isiAyat;
   final String? tanggalTayang;
+  final String? file;
 
   EditMateriPage({
     required this.id,
@@ -24,6 +29,7 @@ class EditMateriPage extends StatefulWidget {
     this.ayat,
     this.isiAyat,
     this.tanggalTayang,
+    this.file,
   });
 
   @override
@@ -38,16 +44,10 @@ class _EditMateriPageState extends State<EditMateriPage> {
   late TextEditingController _ayatController;
   late TextEditingController _isiAyatController;
   late TextEditingController _tanggalTayangController;
+  late TextEditingController _fileNameController;
 
   Uint8List? _selectedFileBytes;
   String? _selectedFileName;
-
-  String? selectedBook;
-  int? selectedChapter;
-  int? selectedVerse;
-  List<String> books = [];
-  List<int> chapters = [];
-  List<int> verses = [];
 
   @override
   void initState() {
@@ -60,50 +60,9 @@ class _EditMateriPageState extends State<EditMateriPage> {
     _isiAyatController = TextEditingController(text: widget.isiAyat ?? '');
     _tanggalTayangController =
         TextEditingController(text: widget.tanggalTayang ?? '');
-
-    fetchBooks();
-  }
-
-  Future<void> fetchBooks() async {
-    final res =
-        await http.get(Uri.parse('http://127.0.0.1:8000/api/bible/books'));
-    if (res.statusCode == 200) {
-      setState(() {
-        books = List<String>.from(jsonDecode(res.body));
-      });
-    }
-  }
-
-  Future<void> fetchChapters(String book) async {
-    final res = await http
-        .get(Uri.parse('http://127.0.0.1:8000/api/bible/chapters?book=$book'));
-    if (res.statusCode == 200) {
-      setState(() {
-        chapters = List<int>.from(jsonDecode(res.body));
-      });
-    }
-  }
-
-  Future<void> fetchVerses(String book, int chapter) async {
-    final res = await http.get(Uri.parse(
-        'http://127.0.0.1:8000/api/bible/verses?book=$book&chapter=$chapter'));
-    if (res.statusCode == 200) {
-      setState(() {
-        verses = List<int>.from(jsonDecode(res.body));
-      });
-    }
-  }
-
-  Future<void> fetchIsiAyat() async {
-    final res = await http.get(Uri.parse(
-        'http://127.0.0.1:8000/api/bible/lookup?book=$selectedBook&chapter=$selectedChapter&verse=$selectedVerse'));
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body);
-      setState(() {
-        _ayatController.text = data['ayat'];
-        _isiAyatController.text = data['isi_ayat'];
-      });
-    }
+    _fileNameController = TextEditingController(
+      text: widget.file != null ? widget.file!.split('/').last : '',
+    );
   }
 
   Future<void> _pickFile() async {
@@ -112,43 +71,34 @@ class _EditMateriPageState extends State<EditMateriPage> {
       allowedExtensions: ['pdf', 'doc', 'docx'],
       withData: true,
     );
-
     if (result != null) {
       setState(() {
         _selectedFileBytes = result.files.single.bytes;
         _selectedFileName = result.files.single.name;
+        _fileNameController.text = _selectedFileName!;
       });
     }
   }
 
-  Future<void> _showConfirmationDialog() async {
-    bool? confirm = await showDialog(
+  Future<void> _selectDate() async {
+    DateTime? pickedDate = await showDatePicker(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Konfirmasi Perubahan"),
-          content: Text("Yakin ingin mengubah data ini?"),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text("Batal"),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text("Ya, Ubah"),
-            ),
-          ],
-        );
-      },
+      initialDate:
+          DateTime.tryParse(_tanggalTayangController.text) ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
     );
 
-    if (confirm == true) {
-      _updateMateri();
+    if (pickedDate != null) {
+      setState(() {
+        _tanggalTayangController.text =
+            DateFormat('yyyy-MM-dd').format(pickedDate);
+      });
     }
   }
 
   Future<void> _updateMateri() async {
-    Map<String, String> fields = {
+    final fields = {
       'judul': _judulController.text,
       'deskripsi': _deskripsiController.text,
       'kelas': _kelasController.text,
@@ -163,7 +113,6 @@ class _EditMateriPageState extends State<EditMateriPage> {
 
     try {
       if (_selectedFileBytes != null) {
-        // kirim multipart
         var request = http.MultipartRequest(
           'POST',
           Uri.parse(
@@ -179,18 +128,12 @@ class _EditMateriPageState extends State<EditMateriPage> {
         ));
 
         var response = await request.send();
-        final resBody = await response.stream.bytesToString();
-
         if (response.statusCode == 200) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text("Materi berhasil diperbarui (dengan file)")));
-          Navigator.pop(context, true);
-        } else {
           ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text("Gagal update dengan file")));
+              SnackBar(content: Text("Materi berhasil diperbarui")));
+          Navigator.pop(context, true);
         }
       } else {
-        // kirim PUT biasa
         final response = await http.put(
           Uri.parse('http://127.0.0.1:8000/api/materi/${widget.id}'),
           headers: {
@@ -204,135 +147,107 @@ class _EditMateriPageState extends State<EditMateriPage> {
           ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text("Materi berhasil diperbarui")));
           Navigator.pop(context, true);
-        } else {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text("Gagal update data")));
         }
       }
     } catch (e) {
-      print("❌ Error saat update: $e");
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Terjadi kesalahan saat update")));
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Edit Materi"),
-        backgroundColor: Colors.blue,
-      ),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildTextField("Judul Materi", _judulController),
-              _buildTextField("Deskripsi", _deskripsiController),
-              _buildTextField("Kelas", _kelasController),
-              _buildTextField("Poin-poin", _poinController),
-              Text("Referensi Alkitab",
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              DropdownButton<String>(
-                isExpanded: true,
-                hint: Text("Pilih Kitab"),
-                value: selectedBook,
-                items: books
-                    .map((book) =>
-                        DropdownMenuItem(value: book, child: Text(book)))
-                    .toList(),
-                onChanged: (val) {
-                  setState(() {
-                    selectedBook = val;
-                    selectedChapter = null;
-                    selectedVerse = null;
-                    _ayatController.clear();
-                    _isiAyatController.clear();
-                    chapters.clear();
-                    verses.clear();
-                  });
-                  if (val != null) fetchChapters(val);
-                },
-              ),
-              if (selectedBook != null)
-                DropdownButton<int>(
-                  isExpanded: true,
-                  hint: Text("Pilih Pasal"),
-                  value: selectedChapter,
-                  items: chapters
-                      .map((ch) =>
-                          DropdownMenuItem(value: ch, child: Text("Pasal $ch")))
-                      .toList(),
-                  onChanged: (val) {
-                    setState(() {
-                      selectedChapter = val;
-                      selectedVerse = null;
-                      _ayatController.clear();
-                      _isiAyatController.clear();
-                      verses.clear();
-                    });
-                    if (val != null) fetchVerses(selectedBook!, val);
-                  },
-                ),
-              if (selectedChapter != null)
-                DropdownButton<int>(
-                  isExpanded: true,
-                  hint: Text("Pilih Ayat"),
-                  value: selectedVerse,
-                  items: verses
-                      .map((v) =>
-                          DropdownMenuItem(value: v, child: Text("Ayat $v")))
-                      .toList(),
-                  onChanged: (val) {
-                    setState(() {
-                      selectedVerse = val;
-                    });
-                    fetchIsiAyat();
-                  },
-                ),
-              _buildTextField("Ayat", _ayatController),
-              _buildTextField("Isi Ayat", _isiAyatController,
-                  isMultiline: true),
-              SizedBox(height: 10),
-              Text("File",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ElevatedButton(
-                onPressed: _pickFile,
-                child: Text(_selectedFileName ?? "Pilih File"),
-                style:
-                    ElevatedButton.styleFrom(backgroundColor: Colors.grey[300]),
-              ),
-              SizedBox(height: 10),
-              _buildTextField("Tanggal Tayang", _tanggalTayangController),
-              SizedBox(height: 20),
-              Center(
-                child: ElevatedButton(
-                  onPressed: _showConfirmationDialog,
-                  child: Text("Simpan Perubahan"),
+  Widget _textFieldOutline(String label, TextEditingController controller,
+      {bool isMultiline = false, bool readOnly = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment:
+            isMultiline ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+        children: [
+          SizedBox(width: 100, child: Text(label)),
+          Expanded(
+            child: TextField(
+              controller: controller,
+              readOnly: readOnly,
+              maxLines: isMultiline ? 3 : 1,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.grey),
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller,
-      {bool isMultiline = false}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TextStyle(fontWeight: FontWeight.bold)),
-        TextField(
-          controller: controller,
-          maxLines: isMultiline ? 3 : 1,
-          decoration: InputDecoration(border: OutlineInputBorder()),
+  @override
+  Widget build(BuildContext context) {
+    final fileUrl = widget.file != null
+        ? 'http://127.0.0.1:8000/storage/${widget.file}'
+        : null;
+
+    return Scaffold(
+      appBar:
+          const CustomPageAppBar(icon: Icons.menu_book, title: 'Edit Materi'),
+      bottomNavigationBar: const EmptyBottomBar(),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _textFieldOutline("Judul", _judulController),
+            _textFieldOutline("Deskripsi", _deskripsiController,
+                isMultiline: true),
+            _textFieldOutline("Kelas", _kelasController),
+            _textFieldOutline("Poin-poin", _poinController),
+            _textFieldOutline("Ayat", _ayatController),
+            _textFieldOutline("Isi Ayat", _isiAyatController,
+                isMultiline: true),
+            _textFieldOutline("File", _fileNameController, readOnly: true),
+            if (widget.file != null && widget.file!.isNotEmpty)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () => launchUrl(Uri.parse(fileUrl!)),
+                  icon: Icon(Icons.visibility),
+                  label: Text("Lihat File Lama"),
+                ),
+              ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton(
+                onPressed: _pickFile,
+                child: Text("Choose File"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey[300],
+                  foregroundColor: Colors.black,
+                ),
+              ),
+            ),
+            _textFieldOutline("Tayang", _tanggalTayangController,
+                readOnly: true),
+            Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                icon: Icon(Icons.calendar_today),
+                onPressed: _selectDate,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _updateMateri,
+              child: Text("Simpan Perubahan", style: TextStyle(fontSize: 16)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal,
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+              ),
+            ),
+          ],
         ),
-        SizedBox(height: 10),
-      ],
+      ),
     );
   }
 }

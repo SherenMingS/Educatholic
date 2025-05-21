@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
+import '../widgets/custom_appbar.dart';
+import '../widgets/empty_bottombar.dart';
 
 class AddQuizPage extends StatefulWidget {
   @override
@@ -16,17 +18,15 @@ class _AddQuizPageState extends State<AddQuizPage> {
   String? selectedClass;
   String? token;
   DateTime? selectedDeadline;
-  List<Map<String, dynamic>> questions = [];
-
+  List<Map<String, TextEditingController>> questionControllers = [];
   List<Map<String, dynamic>> materiList = [];
   String? selectedMateriId;
-
-  final List<String> classList = ['8A', '8B'];
 
   @override
   void initState() {
     super.initState();
     _loadTokenAndClass();
+    _addQuestion();
   }
 
   Future<void> _loadTokenAndClass() async {
@@ -34,11 +34,11 @@ class _AddQuizPageState extends State<AddQuizPage> {
     token = prefs.getString('token');
     selectedClass = prefs.getString('kelas_guru');
     await _loadMateriList();
+    setState(() {}); // update tampilan kelas setelah loaded
   }
 
   Future<void> _loadMateriList() async {
     if (token == null || selectedClass == null) return;
-
     try {
       final materiData = await ApiService.getMateri(token!, selectedClass!);
       setState(() {
@@ -49,247 +49,212 @@ class _AddQuizPageState extends State<AddQuizPage> {
     }
   }
 
-  Future<void> _submitQuiz() async {
-    if (_formKey.currentState!.validate() && token != null) {
-      if (questions.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Minimal 1 soal harus ada!")),
-        );
-        return;
-      }
-
-      double scorePerQuestion = 100 / questions.length;
-      for (var q in questions) {
-        q["score"] = scorePerQuestion.toStringAsFixed(2);
-      }
-
-      Map<String, dynamic> quizData = {
-        "title": titleController.text,
-        "kelas": selectedClass,
-        "materi_id": selectedMateriId,
-        "duration": int.tryParse(durationController.text) ?? 30,
-        "deadline":
-            deadlineController.text.isNotEmpty ? deadlineController.text : null,
-        "questions": questions,
-      };
-
-      try {
-        await ApiService.createQuiz(quizData, token!);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Quiz berhasil dibuat")),
-        );
-        Navigator.pop(context, true);
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Gagal membuat quiz: $e")),
-        );
-      }
-    }
-  }
-
   void _addQuestion() {
     setState(() {
-      questions.add({
-        "question": "",
-        "option_1": "",
-        "option_2": "",
-        "option_3": "",
-        "option_4": "",
-        "correct_answer": "A",
+      questionControllers.add({
+        "question": TextEditingController(),
+        "option_1": TextEditingController(),
+        "option_2": TextEditingController(),
+        "option_3": TextEditingController(),
+        "option_4": TextEditingController(),
+        "correct_answer": TextEditingController(text: "A"),
       });
     });
   }
 
   void _removeQuestion(int index) {
     setState(() {
-      questions.removeAt(index);
+      questionControllers.removeAt(index);
     });
   }
 
-  void _pickDeadline() async {
+  Future<void> _pickDeadline() async {
     DateTime? pickedDate = await showDatePicker(
       context: context,
       initialDate: selectedDeadline ?? DateTime.now(),
       firstDate: DateTime.now(),
       lastDate: DateTime(2100),
     );
-
     if (pickedDate != null) {
       TimeOfDay? pickedTime = await showTimePicker(
         context: context,
         initialTime: TimeOfDay.fromDateTime(selectedDeadline ?? DateTime.now()),
       );
-
       if (pickedTime != null) {
-        DateTime finalDateTime = DateTime(
-          pickedDate.year,
-          pickedDate.month,
-          pickedDate.day,
-          pickedTime.hour,
-          pickedTime.minute,
-        );
-
+        final dt = DateTime(pickedDate.year, pickedDate.month, pickedDate.day,
+            pickedTime.hour, pickedTime.minute);
         setState(() {
-          selectedDeadline = finalDateTime;
+          selectedDeadline = dt;
           deadlineController.text =
-              DateFormat('yyyy-MM-dd HH:mm:ss').format(finalDateTime);
+              DateFormat('yyyy-MM-dd HH:mm:ss').format(dt);
         });
       }
     }
   }
 
+  Future<void> _submitQuiz() async {
+    if (!_formKey.currentState!.validate() ||
+        token == null ||
+        selectedClass == null) return;
+    if (questionControllers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Minimal 1 soal harus ada!")),
+      );
+      return;
+    }
+
+    double scorePerQuestion = 100 / questionControllers.length;
+    List<Map<String, dynamic>> questions = questionControllers.map((q) {
+      return {
+        "question": q["question"]!.text,
+        "option_1": q["option_1"]!.text,
+        "option_2": q["option_2"]!.text,
+        "option_3": q["option_3"]!.text,
+        "option_4": q["option_4"]!.text,
+        "correct_answer": q["correct_answer"]!.text,
+        "score": scorePerQuestion.toStringAsFixed(2),
+      };
+    }).toList();
+
+    Map<String, dynamic> quizData = {
+      "title": titleController.text,
+      "kelas": selectedClass,
+      "materi_id": selectedMateriId,
+      "duration": int.tryParse(durationController.text) ?? 30,
+      "deadline":
+          deadlineController.text.isNotEmpty ? deadlineController.text : null,
+      "questions": questions,
+    };
+
+    try {
+      await ApiService.createQuiz(quizData, token!);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Quiz berhasil dibuat")),
+      );
+      Navigator.pop(context, true);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Gagal membuat quiz: $e")),
+      );
+    }
+  }
+
+  Widget _buildFormField(String label, TextEditingController controller,
+      {TextInputType? keyboardType,
+      bool readOnly = false,
+      VoidCallback? onTap}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: TextFormField(
+        controller: controller,
+        readOnly: readOnly,
+        keyboardType: keyboardType,
+        onTap: onTap,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        validator: (val) =>
+            val == null || val.isEmpty ? "$label tidak boleh kosong" : null,
+      ),
+    );
+  }
+
+  Widget _buildQuestionCard(int index, Map<String, TextEditingController> q) {
+    return Card(
+      margin: EdgeInsets.symmetric(vertical: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            _buildFormField("Pertanyaan", q["question"]!),
+            _buildFormField("Opsi A", q["option_1"]!),
+            _buildFormField("Opsi B", q["option_2"]!),
+            _buildFormField("Opsi C", q["option_3"]!),
+            _buildFormField("Opsi D", q["option_4"]!),
+            DropdownButtonFormField<String>(
+              value: q["correct_answer"]!.text,
+              decoration: InputDecoration(
+                labelText: "Jawaban Benar",
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              items: ["A", "B", "C", "D"]
+                  .map((opt) => DropdownMenuItem(value: opt, child: Text(opt)))
+                  .toList(),
+              onChanged: (val) =>
+                  setState(() => q["correct_answer"]!.text = val!),
+            ),
+            SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: () => _removeQuestion(index),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: Text("Hapus Soal"),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Tambah Kuis"), backgroundColor: Colors.blue),
+      appBar: CustomPageAppBar(title: 'Tambah Kuis', icon: Icons.quiz),
+      bottomNavigationBar: EmptyBottomBar(),
       body: Padding(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextFormField(
-                  controller: titleController,
-                  decoration: InputDecoration(labelText: "Judul Kuis"),
-                  validator: (value) =>
-                      value!.isEmpty ? "Judul tidak boleh kosong" : null,
+          child: ListView(
+            children: [
+              _buildFormField("Judul Kuis", titleController),
+              _buildFormField("Kelas ",
+                  TextEditingController(text: selectedClass ?? ""),
+                  readOnly: true),
+              DropdownButtonFormField<String>(
+                value: selectedMateriId,
+                decoration: InputDecoration(
+                  labelText: "Pilih Materi",
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
-                SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  value: selectedClass,
-                  decoration: InputDecoration(labelText: "Pilih Kelas"),
-                  items: classList.map((kelas) {
-                    return DropdownMenuItem(value: kelas, child: Text(kelas));
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedClass = value;
-                      selectedMateriId = null;
-                    });
-                    _loadMateriList(); // refresh materi saat ganti kelas
-                  },
-                  validator: (value) => value == null ? "Pilih kelas" : null,
-                ),
-                SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  value: selectedMateriId,
-                  decoration:
-                      InputDecoration(labelText: "Pilih Materi Terkait"),
-                  items: materiList.map((materi) {
-                    return DropdownMenuItem(
-                      value: materi['id'].toString(),
-                      child: Text(materi['judul']),
-                    );
-                  }).toList(),
-                  onChanged: (val) {
-                    setState(() {
-                      selectedMateriId = val;
-                    });
-                  },
-                  validator: (value) => value == null ? "Pilih materi" : null,
-                ),
-                SizedBox(height: 10),
-                TextFormField(
-                  controller: durationController,
-                  decoration: InputDecoration(labelText: "Durasi (menit)"),
-                  keyboardType: TextInputType.number,
-                ),
-                SizedBox(height: 10),
-                TextFormField(
-                  controller: deadlineController,
-                  readOnly: true,
-                  decoration: InputDecoration(
-                    labelText: "Deadline",
-                    suffixIcon: Icon(Icons.calendar_today),
-                  ),
-                  onTap: _pickDeadline,
-                ),
-                SizedBox(height: 20),
-                Text("Soal Kuis",
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                SizedBox(height: 10),
-                Column(
-                  children: questions.asMap().entries.map((entry) {
-                    int index = entry.key;
-                    var question = entry.value;
-
-                    return Card(
-                      margin: EdgeInsets.symmetric(vertical: 5),
-                      elevation: 3,
-                      child: Padding(
-                        padding: EdgeInsets.all(10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            TextFormField(
-                              initialValue: question["question"],
-                              decoration:
-                                  InputDecoration(labelText: "Pertanyaan"),
-                              onChanged: (value) =>
-                                  question["question"] = value,
-                            ),
-                            TextFormField(
-                              initialValue: question["option_1"],
-                              decoration: InputDecoration(labelText: "Opsi A"),
-                              onChanged: (value) =>
-                                  question["option_1"] = value,
-                            ),
-                            TextFormField(
-                              initialValue: question["option_2"],
-                              decoration: InputDecoration(labelText: "Opsi B"),
-                              onChanged: (value) =>
-                                  question["option_2"] = value,
-                            ),
-                            TextFormField(
-                              initialValue: question["option_3"],
-                              decoration: InputDecoration(labelText: "Opsi C"),
-                              onChanged: (value) =>
-                                  question["option_3"] = value,
-                            ),
-                            TextFormField(
-                              initialValue: question["option_4"],
-                              decoration: InputDecoration(labelText: "Opsi D"),
-                              onChanged: (value) =>
-                                  question["option_4"] = value,
-                            ),
-                            DropdownButtonFormField(
-                              value: question["correct_answer"],
-                              decoration:
-                                  InputDecoration(labelText: "Jawaban Benar"),
-                              items: ["A", "B", "C", "D"].map((opt) {
-                                return DropdownMenuItem(
-                                    value: opt, child: Text(opt));
-                              }).toList(),
-                              onChanged: (value) => setState(() {
-                                question["correct_answer"] = value;
-                              }),
-                            ),
-                            SizedBox(height: 10),
-                            ElevatedButton(
-                              onPressed: () => _removeQuestion(index),
-                              child: Text("Hapus Soal"),
-                              style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                SizedBox(height: 10),
-                ElevatedButton(
-                    onPressed: _addQuestion, child: Text("Tambah Soal")),
-                SizedBox(height: 20),
-                SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                        onPressed: _submitQuiz, child: Text("Simpan Kuis"))),
-              ],
-            ),
+                items: materiList.map((materi) {
+                  return DropdownMenuItem(
+                    value: materi['id'].toString(),
+                    child: Text(materi['judul']),
+                  );
+                }).toList(),
+                onChanged: (val) => setState(() => selectedMateriId = val),
+                validator: (val) => val == null ? "Pilih materi" : null,
+              ),
+              SizedBox(height: 10),
+              _buildFormField("Durasi (menit)", durationController,
+                  keyboardType: TextInputType.number),
+              _buildFormField("Deadline", deadlineController,
+                  readOnly: true, onTap: _pickDeadline),
+              SizedBox(height: 20),
+              Text("Soal Kuis",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              SizedBox(height: 10),
+              ...questionControllers
+                  .asMap()
+                  .entries
+                  .map((e) => _buildQuestionCard(e.key, e.value)),
+              ElevatedButton(
+                onPressed: _addQuestion,
+                child: Text("Tambah Soal"),
+              ),
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _submitQuiz,
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    padding: EdgeInsets.symmetric(vertical: 12)),
+                child: Text("Simpan Kuis"),
+              ),
+            ],
           ),
         ),
       ),

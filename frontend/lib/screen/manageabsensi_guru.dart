@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:frontend/widgets/custom_appbar.dart';
+import 'package:frontend/widgets/empty_bottombar.dart';
 
 class ManageAbsensiPage extends StatefulWidget {
   final int sessionId;
@@ -75,36 +77,15 @@ class _ManageAbsensiPageState extends State<ManageAbsensiPage> {
       builder: (context) {
         return SimpleDialog(
           title: Text('Pilih Status Absensi'),
-          children: [
-            SimpleDialogOption(
+          children: ['hadir', 'izin', 'sakit', 'alfa'].map((status) {
+            return SimpleDialogOption(
               onPressed: () {
                 Navigator.pop(context);
-                _showConfirmDialog(context, userId, 'hadir');
+                _showConfirmDialog(context, userId, status);
               },
-              child: Text('Hadir'),
-            ),
-            SimpleDialogOption(
-              onPressed: () {
-                Navigator.pop(context);
-                _showConfirmDialog(context, userId, 'izin');
-              },
-              child: Text('Izin'),
-            ),
-            SimpleDialogOption(
-              onPressed: () {
-                Navigator.pop(context);
-                _showConfirmDialog(context, userId, 'sakit');
-              },
-              child: Text('Sakit'),
-            ),
-            SimpleDialogOption(
-              onPressed: () {
-                Navigator.pop(context);
-                _showConfirmDialog(context, userId, 'alfa');
-              },
-              child: Text('Alfa'),
-            ),
-          ],
+              child: Text(status[0].toUpperCase() + status.substring(1)),
+            );
+          }).toList(),
         );
       },
     );
@@ -139,10 +120,11 @@ class _ManageAbsensiPageState extends State<ManageAbsensiPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Kelola Absensi Kelas ${widget.kelas}'),
-        backgroundColor: Colors.blue,
+      appBar: CustomPageAppBar(
+        icon: Icons.check_circle,
+        title: 'Absensi ${widget.kelas}',
       ),
+      bottomNavigationBar: const EmptyBottomBar(),
       body: loading
           ? Center(child: CircularProgressIndicator())
           : students.isEmpty
@@ -154,7 +136,8 @@ class _ManageAbsensiPageState extends State<ManageAbsensiPage> {
                     final userId = student['user_id'];
 
                     return Card(
-                      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
                       child: ListTile(
                         title: Text(student['nama']),
                         subtitle: Text('Status: ${student['status']}'),

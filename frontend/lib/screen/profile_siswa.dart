@@ -138,7 +138,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   // Handle the navigation to different pages (bottom navigation)
-  void _onItemTapped(int index) {
+  void _onItemTapped(int index) async {
     if (index == _selectedIndex) return;
 
     setState(() {
@@ -159,12 +159,20 @@ class _ProfilePageState extends State<ProfilePage> {
             this.context, MaterialPageRoute(builder: (_) => DashboardSiswa()));
         break;
       case 3:
-        Navigator.pushReplacement(
-            this.context,
-            MaterialPageRoute(
-                builder: (_) =>
-                    LeaderboardScreen(token: profileData?['token'] ?? '')));
-        break;
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? token = prefs.getString('token');
+  if (token != null) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => LeaderboardScreen(token: token)),
+    );
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Token tidak ditemukan')),
+    );
+  }
+  break;
+
       case 4:
         // Stay on Profile
         break;
