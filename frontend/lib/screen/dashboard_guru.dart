@@ -245,7 +245,7 @@ class _DashboardGuruState extends State<DashboardGuru> {
             color: Colors.red.shade50,
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Text("Belum ada sesi absensi terbaru."),
+          child: Text("Belum ada sesi presensi terbaru."),
         );
       }
 
@@ -264,7 +264,7 @@ class _DashboardGuruState extends State<DashboardGuru> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("📊 Sesi Absensi Terakhir",
+            Text("📊 Sesi Kehadiran Terakhir",
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 12),
             Wrap(
@@ -317,7 +317,7 @@ class _DashboardGuruState extends State<DashboardGuru> {
   Widget _buildManagementOptions(BuildContext context) {
     return Column(
       children: [
-        _managementCard(Icons.qr_code, "Buat Sesi Absensi", () {
+        _managementCard(Icons.qr_code, "Buat Sesi Kehadiran", () {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => CreateAbsensiGuruPage()),
@@ -329,7 +329,7 @@ class _DashboardGuruState extends State<DashboardGuru> {
             MaterialPageRoute(builder: (context) => MateriGuruPage()),
           );
         }),
-        _managementCard(Icons.edit, "Manage Absensi", () {
+        _managementCard(Icons.edit, "Manage Kehadiran", () {
           Navigator.push(
             context,
             MaterialPageRoute(

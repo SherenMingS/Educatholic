@@ -22,6 +22,7 @@ class User extends Authenticatable
         'photo',
         'reset_otp',               // 👈 ini
         'reset_otp_expires_at', 
+        'gender', 
     ];
 
     protected $hidden = [

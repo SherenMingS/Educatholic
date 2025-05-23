@@ -45,7 +45,8 @@ class AuthController extends Controller
         'email' => 'required|string|email|max:255|unique:users',
         'password' => 'required|string|min:8|confirmed',
         'role' => 'required|in:siswa,guru',
-        'kelas' => 'required_if:role,siswa' // ✅ Tambahkan validasi kelas untuk siswa
+        'kelas' => 'required_if:role,siswa',
+        'gender' => 'required|in:Laki-laki,Perempuan', // ✅ Tambah validasi gender
     ]);
 
     $user = User::create([
@@ -53,7 +54,8 @@ class AuthController extends Controller
         'email' => $request->email,
         'password' => Hash::make($request->password),
         'role' => $request->role,
-        'kelas' => $request->kelas // ✅ Simpan kelas
+        'kelas' => $request->kelas,
+        'gender' => $request->gender, // ✅ Tambah penyimpanan gender
     ]);
 
     $token = $user->createToken('auth_token')->plainTextToken;

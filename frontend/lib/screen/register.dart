@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/screen/login.dart';
+import 'package:frontend/services/api_service.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -13,16 +14,19 @@ class _RegisterPageState extends State<RegisterPage> {
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
   TextEditingController confirmPasswordController = TextEditingController();
-  String? role;
-  String? kelas;
+  String? kelas; // Pilihan kelas siswa
+  String? gender; // ✅ Jenis Kelamin
+
+  final List<String> genderList = ['Laki-laki', 'Perempuan'];
+  final String role = "siswa";
 
   Future<void> register() async {
     if (nameController.text.isEmpty ||
         emailController.text.isEmpty ||
         passwordController.text.isEmpty ||
         confirmPasswordController.text.isEmpty ||
-        role == null ||
-        (role == "siswa" && kelas == null)) {
+        kelas == null ||
+        gender == null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text("Harap isi semua bidang!"),
         backgroundColor: Colors.red,
@@ -31,7 +35,7 @@ class _RegisterPageState extends State<RegisterPage> {
     }
 
     final response = await http.post(
-      Uri.parse('http://127.0.0.1:8000/api/register'),
+      Uri.parse('${ApiService.baseUrl}/register'),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "name": nameController.text,
@@ -39,22 +43,25 @@ class _RegisterPageState extends State<RegisterPage> {
         "password": passwordController.text,
         "password_confirmation": confirmPasswordController.text,
         "role": role,
-        "kelas": role == "siswa" ? kelas : null, // Tambahkan kelas jika siswa
+        "kelas": kelas,
+        "gender": gender, // ✅ Kirim gender ke backend
       }),
     );
 
     if (response.statusCode == 201) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text("Registrasi Berhasil!",
-              style: TextStyle(color: Colors.white)),
-          backgroundColor: Colors.green));
+        content:
+            Text("Registrasi Berhasil!", style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.green,
+      ));
       Navigator.pushReplacement(
           context, MaterialPageRoute(builder: (context) => LoginScreen()));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content:
-              Text("Registrasi Gagal!", style: TextStyle(color: Colors.white)),
-          backgroundColor: Colors.red));
+        content:
+            Text("Registrasi Gagal!", style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.red,
+      ));
     }
   }
 
@@ -69,16 +76,11 @@ class _RegisterPageState extends State<RegisterPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo
-                Image.asset(
-                  'assets/logo.png', // Ganti dengan path logo kamu
-                  height: 80,
-                ),
+                Image.asset('assets/logo.png', height: 80),
                 SizedBox(height: 10),
-                Text(
-                  "EduCatholic",
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                ),
+                Text("EduCatholic",
+                    style:
+                        TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                 SizedBox(height: 20),
 
                 // Nama
@@ -119,7 +121,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
                 SizedBox(height: 10),
 
-                // Password Confirmation
+                // Konfirmasi Password
                 TextField(
                   controller: confirmPasswordController,
                   decoration: InputDecoration(
@@ -132,7 +134,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
                 SizedBox(height: 10),
 
-                // Role Dropdown
+                // Dropdown Kelas
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 10),
                   decoration: BoxDecoration(
@@ -140,50 +142,47 @@ class _RegisterPageState extends State<RegisterPage> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: DropdownButton<String>(
-                    value: role,
-                    hint: Text("Pilih Role"),
+                    value: kelas,
+                    hint: Text("Pilih Kelas"),
                     isExpanded: true,
                     underline: SizedBox(),
                     onChanged: (String? newValue) {
                       setState(() {
-                        role = newValue;
-                        kelas = null; // Reset pilihan kelas jika role berubah
+                        kelas = newValue;
                       });
                     },
-                    items: ['siswa', 'guru'].map((role) {
-                      return DropdownMenuItem(value: role, child: Text(role));
+                    items: ['8A', '8B'].map((kelas) {
+                      return DropdownMenuItem(value: kelas, child: Text(kelas));
                     }).toList(),
                   ),
                 ),
                 SizedBox(height: 10),
 
-                // Kelas Dropdown (Hanya untuk siswa)
-                if (role == "siswa")
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 10),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: DropdownButton<String>(
-                      value: kelas,
-                      hint: Text("Pilih Kelas"),
-                      isExpanded: true,
-                      underline: SizedBox(),
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          kelas = newValue;
-                        });
-                      },
-                      items: ['8A', '8B'].map((kelas) {
-                        return DropdownMenuItem(
-                            value: kelas, child: Text(kelas));
-                      }).toList(),
-                    ),
+                // ✅ Dropdown Jenis Kelamin
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(10),
                   ),
+                  child: DropdownButton<String>(
+                    value: gender,
+                    hint: Text("Pilih Jenis Kelamin"),
+                    isExpanded: true,
+                    underline: SizedBox(),
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        gender = newValue;
+                      });
+                    },
+                    items: genderList.map((item) {
+                      return DropdownMenuItem(value: item, child: Text(item));
+                    }).toList(),
+                  ),
+                ),
                 SizedBox(height: 20),
 
-                // Register Button
+                // Tombol Register
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -200,7 +199,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                 ),
 
-                // Login Link
+                // Link ke login
                 SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -217,9 +216,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       child: Text(
                         "Login",
                         style: TextStyle(
-                          color: Colors.blue,
-                          fontWeight: FontWeight.bold,
-                        ),
+                            color: Colors.blue, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],

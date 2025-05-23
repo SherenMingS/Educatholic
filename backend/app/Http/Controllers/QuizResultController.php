@@ -9,23 +9,48 @@ use Illuminate\Support\Facades\Auth;
 class QuizResultController extends Controller
 {
     // Endpoint untuk memeriksa apakah quiz sudah dikerjakan
-    public function checkIfAttempted($quizId)
+ public function checkIfAttempted($quizId)
 {
-    $userId = Auth::id(); // Ambil user_id dari Auth
+    $userId = Auth::id();
 
-    // Cek apakah sudah ada record di quiz_results untuk user dan quiz tertentu
-    $existingResult = QuizResult::where('user_id', $userId)
-                                ->where('quiz_id', $quizId)
-                                ->first();
-
-    if ($existingResult) {
-        // Jika sudah ada, berarti kuis sudah dikerjakan
-        return response()->json(['status' => 'failed', 'message' => 'Anda sudah mengerjakan kuis ini'], 400);
+    $quiz = \App\Models\Quiz::find($quizId);
+    if (!$quiz) {
+        return response()->json(['status' => 'failed', 'message' => 'Quiz tidak ditemukan'], 404);
     }
 
-    // Jika belum ada, kuis bisa dikerjakan
-    return response()->json(['status' => 'success', 'message' => 'Kuis bisa dikerjakan'], 200);
+    $latestResult = QuizResult::where('user_id', $userId)
+                        ->where('quiz_id', $quizId)
+                        ->latest()
+                        ->first();
+
+    $attemptCount = QuizResult::where('user_id', $userId)
+                        ->where('quiz_id', $quizId)
+                        ->count();
+
+    // ✅ Kalau sudah pernah ngerjain dan nilai >= kkm, tolak retry meskipun belum max_attempts
+    if ($latestResult && $latestResult->score >= $quiz->kkm) {
+        return response()->json([
+            'status' => 'failed',
+            'message' => 'Kamu sudah mengerjakan kuis dan nilai sudah passing KKM',
+            'can_retry' => false,
+            'last_score' => $latestResult->score,
+            'current_attempts' => $attemptCount,
+            'max_attempts' => $quiz->max_attempts,
+        ]);
+    }
+
+    // ✅ Kalau masih bisa retry
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Kuis bisa dikerjakan',
+        'can_retry' => $attemptCount < $quiz->max_attempts,
+        'last_score' => optional($latestResult)->score,
+        'current_attempts' => $attemptCount,
+        'max_attempts' => $quiz->max_attempts,
+    ]);
 }
+
+
 
 
     public function storeQuizResult(Request $request)

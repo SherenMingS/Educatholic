@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:frontend/services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../widgets/custom_appbar.dart';
@@ -40,7 +41,7 @@ class _AbsenKodePageState extends State<AbsenKodePage> {
     int? userId = prefs.getInt('user_id');
 
     final response = await http.post(
-      Uri.parse('http://localhost:8000/api/attendance/check-code'),
+      Uri.parse('${ApiService.baseUrl}/attendance/check-code'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -59,10 +60,10 @@ class _AbsenKodePageState extends State<AbsenKodePage> {
         _kodeValid = true;
         _sessionId = data['session_id'].toString();
         _kelas = data['kelas'];
-        _message = "✅ Kode valid. Silakan klik Absen.";
+        _message = "✅ Kode valid. Silakan klik Hadir.";
       } else if (data['status'] == 'already_absent') {
         _sudahAbsen = true;
-        _message = "⚠️ Kamu sudah absen untuk sesi ini.";
+        _message = "⚠️ Kamu sudah hadir untuk sesi ini.";
       } else {
         _message = data['message'];
       }
@@ -75,7 +76,7 @@ class _AbsenKodePageState extends State<AbsenKodePage> {
     int? userId = prefs.getInt('user_id');
 
     final response = await http.post(
-      Uri.parse('http://localhost:8000/api/attendance-records/absen'),
+      Uri.parse('${ApiService.baseUrl}/attendance-records/absen'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -90,7 +91,7 @@ class _AbsenKodePageState extends State<AbsenKodePage> {
 
     if (response.statusCode == 200) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text("Absensi berhasil dicatat!"),
+        content: Text("Kehadiran berhasil dicatat!"),
         backgroundColor: Colors.green,
       ));
       Navigator.pop(context);
@@ -106,7 +107,7 @@ class _AbsenKodePageState extends State<AbsenKodePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomPageAppBar(
-        title: 'Input Kode Absensi',
+        title: 'Input Kode Kehadiran',
         icon: Icons.verified_user,
       ),
       bottomNavigationBar: EmptyBottomBar(),
@@ -117,7 +118,7 @@ class _AbsenKodePageState extends State<AbsenKodePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Masukkan Kode Absensi",
+              Text("Masukkan Kode Kehadiran",
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               SizedBox(height: 10),
               TextField(
@@ -172,7 +173,7 @@ class _AbsenKodePageState extends State<AbsenKodePage> {
                   child: ElevatedButton.icon(
                     onPressed: kirimAbsen,
                     icon: Icon(Icons.how_to_reg),
-                    label: Text("Absen Sekarang"),
+                    label: Text("Tandai Kehadiran Sekarang"),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       foregroundColor: Colors.white,

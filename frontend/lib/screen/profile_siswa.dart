@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/screen/leaderboard_siswa.dart';
 import 'package:frontend/screen/materi_siswa.dart';
 import 'package:frontend/screen/quizlist_siswa.dart';
+import 'package:frontend/services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
@@ -64,7 +65,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     var request = http.MultipartRequest(
       'POST',
-      Uri.parse('http://localhost:8000/api/user/update-photo'),
+      Uri.parse('${ApiService.baseUrl}/user/update-photo'),
     );
     request.headers['Authorization'] = 'Bearer $token';
     request.headers['Accept'] = 'application/json';
@@ -105,7 +106,7 @@ class _ProfilePageState extends State<ProfilePage> {
       final token = prefs.getString('token') ?? '';
 
       final response = await http.get(
-        Uri.parse('http://localhost:8000/api/student/profile'),
+        Uri.parse('${ApiService.baseUrl}/student/profile'),
         headers: {
           'Authorization': 'Bearer $token',
           'Accept': 'application/json',
@@ -159,19 +160,19 @@ class _ProfilePageState extends State<ProfilePage> {
             this.context, MaterialPageRoute(builder: (_) => DashboardSiswa()));
         break;
       case 3:
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  String? token = prefs.getString('token');
-  if (token != null) {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => LeaderboardScreen(token: token)),
-    );
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Token tidak ditemukan')),
-    );
-  }
-  break;
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        String? token = prefs.getString('token');
+        if (token != null) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => LeaderboardScreen(token: token)),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Token tidak ditemukan')),
+          );
+        }
+        break;
 
       case 4:
         // Stay on Profile
@@ -260,12 +261,16 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         const SizedBox(height: 15),
         Text(
-          profileData?['name'] ?? '', // Display the name
+          profileData?['nama'] ?? '',
           style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 25),
         profileItem(Icons.email, 'Email', profileData?['email'] ?? ''),
         profileItem(Icons.school, 'Kelas', profileData?['kelas'] ?? ''),
+        profileItem(
+            Icons.transgender, 'Jenis Kelamin', profileData?['gender'] ?? '-'),
+        profileItem(Icons.domain, 'Sekolah',
+            'SMP Santo Hilarius'), // ✅ Tambah hardcoded
         const SizedBox(height: 30),
         SizedBox(
           width: double.infinity,

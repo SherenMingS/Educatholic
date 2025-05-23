@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:frontend/screen/materilist_guru.dart';
+import 'package:frontend/services/api_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:frontend/screen/dashboard_guru.dart';
 import 'package:frontend/screen/login.dart';
@@ -35,7 +36,7 @@ class _ProfileGuruPageState extends State<ProfileGuruPage> {
       final token = prefs.getString('token') ?? '';
 
       final response = await http.get(
-        Uri.parse('http://localhost:8000/api/teacher/profile'),
+        Uri.parse('${ApiService.baseUrl}/teacher/profile'),
         headers: {
           'Authorization': 'Bearer $token',
           'Accept': 'application/json',
@@ -93,7 +94,7 @@ class _ProfileGuruPageState extends State<ProfileGuruPage> {
 
     var request = http.MultipartRequest(
       'POST',
-      Uri.parse('http://localhost:8000/api/teacher/update-photo'),
+      Uri.parse('${ApiService.baseUrl}/teacher/update-photo'),
     );
     request.headers['Authorization'] = 'Bearer $token';
     request.headers['Accept'] = 'application/json';

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:frontend/screen/ActivityLogPage_siswa.dart';
 import 'package:frontend/screen/absencode_siswa.dart';
@@ -5,13 +6,13 @@ import 'package:frontend/screen/leaderboard_siswa.dart';
 import 'quizlist_siswa.dart';
 import 'materi_siswa.dart';
 import 'profile_siswa.dart';
-
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
-
+import 'package:http/http.dart' as http;
 import '../controllers/dashboard_controller.dart';
-import 'package:frontend/widgets/theme_switch.dart'; // Import Switch Theme
+import 'package:frontend/services/api_service.dart';
+import 'package:frontend/widgets/theme_switch.dart';
 
 class DashboardSiswa extends StatefulWidget {
   @override
@@ -35,34 +36,50 @@ class CustomAppBarClipper extends CustomClipper<Path> {
 }
 
 class _DashboardSiswaState extends State<DashboardSiswa> {
-  int _selectedIndex = 2; // Default: Home
-
+  int _selectedIndex = 2;
   final DashboardController controller = Get.put(DashboardController());
-
   int? userId;
+  String? absensiStatus;
+  String? absensiMessage;
+
   @override
   void initState() {
     super.initState();
     _checkToken();
     _fetchData();
+    fetchAbsensiStatus();
+  }
+
+  Future<void> fetchAbsensiStatus() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('token');
+
+    final response = await http.get(
+      Uri.parse('${ApiService.baseUrl}/student/attendance/status'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      setState(() {
+        absensiStatus = data['status'];
+        absensiMessage = data['message'] ?? '';
+      });
+    } else {
+      setState(() {
+        absensiStatus = 'error';
+        absensiMessage = 'Gagal mengambil status absensi';
+      });
+    }
   }
 
   void _checkToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('token');
-    int? storedUserId = prefs.getInt('user_id'); // ✅ Ambil user_id
+    int? storedUserId = prefs.getInt('user_id');
     setState(() {
       userId = storedUserId;
     });
-
-    print("Token: $token");
-    print("User ID: $userId");
-
-    if (token != null) {
-      print("Token tersedia: $token");
-    } else {
-      print("Token tidak ditemukan.");
-    }
   }
 
   void _fetchData() async {
@@ -75,11 +92,9 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
 
   void _onItemTapped(int index) async {
     if (index == _selectedIndex) return;
-
     setState(() {
       _selectedIndex = index;
     });
-
     switch (index) {
       case 0:
         Navigator.pushReplacement(
@@ -101,8 +116,6 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
               context,
               MaterialPageRoute(
                   builder: (_) => LeaderboardScreen(token: token)));
-        } else {
-          print("Token tidak ditemukan");
         }
         break;
       case 4:
@@ -115,8 +128,7 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor:
-          Theme.of(context).scaffoldBackgroundColor, // 🔥 GANTI warna latar
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
           Positioned.fill(
@@ -152,11 +164,10 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
       child: Container(
         width: double.infinity,
         height: 180,
-        color: Theme.of(context).primaryColor, // 🔥 Dinamis ikut Theme
+        color: Theme.of(context).primaryColor,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Row(
-          mainAxisAlignment:
-              MainAxisAlignment.spaceBetween, // 🔥 supaya ada ThemeSwitch
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
               children: [
@@ -185,7 +196,7 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
                 ),
               ],
             ),
-            const ThemeSwitchButton(), // 🔥 Tambahkan ThemeSwitch di AppBar
+            const ThemeSwitchButton(),
           ],
         ),
       ),
@@ -196,7 +207,7 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor, // 🔥 Ikut tema
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 5)],
       ),
@@ -242,48 +253,38 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
   Widget _buildBanner() {
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
-      child: Image.asset(
-        'assets/dbsiswa.png',
-        fit: BoxFit.cover,
-        width: double.infinity,
-        height: 100,
-      ),
+      child: Image.asset('assets/dbsiswa.png',
+          fit: BoxFit.cover, width: double.infinity, height: 100),
     );
   }
 
   Widget _buildStats() {
     return Column(
       children: [
-        // 🔥 Tombol Absen Sekarang
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
-            icon: Icon(Icons.qr_code), // Atau ikon lainnya
-            label: Text("Absen Sekarang"),
+            icon: Icon(Icons.qr_code),
+            label: Text("Tandai Kehadiran"),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 12),
               textStyle: const TextStyle(fontSize: 16),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
+                  borderRadius: BorderRadius.circular(10)),
             ),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => AbsenKodePage(),
-              ),
-            ),
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (context) => AbsenKodePage())),
           ),
         ),
         const SizedBox(height: 12),
+        _absensiStatusCard(),
+        const SizedBox(height: 12),
         GestureDetector(
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => ActivityLogPage()),
-            );
+            Navigator.push(context,
+                MaterialPageRoute(builder: (context) => ActivityLogPage()));
           },
           child: _statCard(Icons.history, "Riwayat Aktivitas Anda"),
         ),
@@ -293,7 +294,6 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
                   ? "Rata-rata Skor Kuis sedang dimuat..."
                   : "Rata-rata Skor Kuis ${controller.quizAverage.value}%",
             )),
-
         Obx(() => GestureDetector(
               onTap: () => _showBadgeDialog(context),
               child: _statCard(Icons.badge,
@@ -303,9 +303,61 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
     );
   }
 
+  Widget _absensiStatusCard() {
+    IconData icon;
+    Color color;
+    String text;
+
+    switch (absensiStatus) {
+      case 'hadir':
+        icon = Icons.check_circle;
+        color = Colors.green;
+        text = 'Hadir';
+        break;
+      case 'belum':
+        icon = Icons.warning;
+        color = Colors.orange;
+        text = 'Belum Absen';
+        break;
+      case 'not_available':
+        icon = Icons.info;
+        color = Colors.blueGrey;
+        text = 'Belum Ada Sesi';
+        break;
+      default:
+        icon = Icons.help;
+        color = Colors.grey;
+        text = 'Memuat...';
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            child: Icon(icon, size: 28, color: Colors.white),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              "Status Kehadiran Hari Ini: $text",
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showBadgeDialog(BuildContext context) {
     final count = controller.badgesCount.value;
-
     showDialog(
       context: context,
       builder: (context) {
@@ -326,9 +378,7 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text("Tutup"),
-            ),
+                onPressed: () => Navigator.pop(context), child: Text("Tutup")),
           ],
         );
       },
@@ -338,28 +388,17 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
   Widget _badgeLevelItem(
       String emoji, String title, String subtitle, bool unlocked) {
     return ListTile(
-      leading: Text(
-        emoji,
-        style: TextStyle(fontSize: 26),
-      ),
-      title: Text(
-        title,
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          color: unlocked ? Colors.black : Colors.grey,
-        ),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: TextStyle(
-          color: unlocked ? Colors.black54 : Colors.grey,
-          fontStyle: unlocked ? FontStyle.normal : FontStyle.italic,
-        ),
-      ),
-      trailing: Icon(
-        unlocked ? Icons.verified : Icons.lock,
-        color: unlocked ? Colors.green : Colors.grey,
-      ),
+      leading: Text(emoji, style: TextStyle(fontSize: 26)),
+      title: Text(title,
+          style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: unlocked ? Colors.black : Colors.grey)),
+      subtitle: Text(subtitle,
+          style: TextStyle(
+              color: unlocked ? Colors.black54 : Colors.grey,
+              fontStyle: unlocked ? FontStyle.normal : FontStyle.italic)),
+      trailing: Icon(unlocked ? Icons.verified : Icons.lock,
+          color: unlocked ? Colors.green : Colors.grey),
     );
   }
 
@@ -368,7 +407,7 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
       margin: const EdgeInsets.symmetric(vertical: 6),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor, // 🔥 Ikut tema
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -376,18 +415,14 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor, // 🔥 Ikut tema primary
+              color: Theme.of(context).primaryColor,
               shape: BoxShape.circle,
             ),
             child: Icon(icon, size: 28, color: Colors.white),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              title,
-              style: Theme.of(context).textTheme.bodyLarge, // 🔥 Text dinamis
-            ),
-          ),
+              child: Text(title, style: Theme.of(context).textTheme.bodyLarge)),
         ],
       ),
     );
@@ -396,7 +431,7 @@ class _DashboardSiswaState extends State<DashboardSiswa> {
   Widget _buildCurvedNavBar() {
     return CurvedNavigationBar(
       backgroundColor: Colors.transparent,
-      color: Theme.of(context).primaryColor, // 🔥 Ikut tema
+      color: Theme.of(context).primaryColor,
       height: 70,
       index: _selectedIndex,
       animationDuration: const Duration(milliseconds: 300),

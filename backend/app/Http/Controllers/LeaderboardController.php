@@ -46,18 +46,31 @@ class LeaderboardController extends Controller
             return response()->json(['message' => 'Anda tidak memiliki akses ke kelas ini'], 403);
         }
     
-        $leaderboard = User::where('role', 'siswa')
-            ->where('kelas', $kelasDipilih) // Filter berdasarkan kelas yang dipilih guru
-            ->select('id', 'name', 'kelas')
-            ->withSum('quizResults as total_score', 'score')
-            ->orderByDesc('total_score')
-            ->get();
-    
-        return response()->json([
-            'status' => 'success',
-            'kelas_aktif' => $kelasDipilih,
-            'leaderboard' => $leaderboard
-        ]);
+       $leaderboard = User::where('role', 'siswa')
+    ->where('kelas', $kelasDipilih)
+    ->select('id', 'name', 'kelas')
+    ->withSum('quizResults as total_score', 'score')
+    ->get()
+    ->map(function ($siswa) {
+        $jumlahKuis = QuizResult::where('user_id', $siswa->id)->count();
+        $average = $jumlahKuis > 0
+            ? round(QuizResult::where('user_id', $siswa->id)->avg('score'), 1)
+            : null;
+
+        return [
+            'id' => $siswa->id,
+            'name' => $siswa->name,
+            'kelas' => $siswa->kelas,
+            'total_score' => $siswa->total_score ?? 0,
+            'average_score' => $average, // ✅ Tambahan
+        ];
+    });
+    return response()->json([
+    'status' => 'success',
+    'kelas_aktif' => $kelasDipilih,
+    'leaderboard' => $leaderboard
+]);
+
     }
     
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/services/api_service.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -33,8 +34,7 @@ class _ListAttendanceSessionsPageState
     if (kelasAktif == null) return;
 
     final response = await http.get(
-      Uri.parse(
-          'http://127.0.0.1:8000/api/attendance-sessions?kelas=$kelasAktif'),
+      Uri.parse('${ApiService.baseUrl}/attendance-sessions?kelas=$kelasAktif'),
       headers: {
         'Authorization': 'Bearer $token',
       },
@@ -61,13 +61,13 @@ class _ListAttendanceSessionsPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar:
-          const CustomPageAppBar(icon: Icons.people_alt, title: 'Sesi Absensi'),
+      appBar: const CustomPageAppBar(
+          icon: Icons.people_alt, title: 'Sesi Presensi'),
       bottomNavigationBar: const EmptyBottomBar(),
       body: loading
           ? Center(child: CircularProgressIndicator())
           : sessions.isEmpty
-              ? Center(child: Text('Belum ada sesi absensi untuk kelas ini.'))
+              ? Center(child: Text('Belum ada sesi kehadiran untuk kelas ini.'))
               : ListView.builder(
                   itemCount: sessions.length,
                   padding: const EdgeInsets.all(16),

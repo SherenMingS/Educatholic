@@ -102,6 +102,42 @@ public function getLastSessionByKelas(Request $request)
     ]);
 }
 
+public function getStatusHariIni(Request $request)
+{
+    $user = $request->user(); // Siswa yang login
+    $tanggalHariIni = now()->toDateString();
+
+    // Cek sesi absensi untuk kelas user pada hari ini
+    $session = AttendanceSession::where('kelas', $user->kelas)
+                ->whereDate('tanggal', $tanggalHariIni)
+                ->first();
+
+    if (!$session) {
+        return response()->json([
+            'status' => 'not_available',
+            'message' => 'Guru belum membuka sesi absensi hari ini'
+        ]);
+    }
+
+    // Cek apakah siswa sudah absen
+    $record = AttendanceRecord::where('user_id', $user->id)
+                ->where('session_id', $session->id)
+                ->first();
+
+    if ($record && $record->status === 'hadir') {
+        return response()->json([
+            'status' => 'hadir',
+            'message' => 'Kamu sudah absen hari ini'
+        ]);
+    }
+
+    return response()->json([
+        'status' => 'belum',
+        'message' => 'Kamu belum absen hari ini'
+    ]);
+}
+
+
     
 
 }

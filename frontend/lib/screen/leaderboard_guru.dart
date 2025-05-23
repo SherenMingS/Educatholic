@@ -34,7 +34,7 @@ class _TeacherLeaderboardScreenState extends State<TeacherLeaderboardScreen> {
     return Scaffold(
       appBar: CustomPageAppBar(
         title: 'Nilai Kelas ${widget.kelas}',
-        icon: Icons.leaderboard, // Add an appropriate icon
+        icon: Icons.leaderboard,
       ),
       bottomNavigationBar: EmptyBottomBar(),
       body: FutureBuilder<List<LeaderboardModel>>(
@@ -57,16 +57,37 @@ class _TeacherLeaderboardScreenState extends State<TeacherLeaderboardScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.blueAccent,
-                    child: Text("${index + 1}"),
-                  ),
-                  title: Text(student.name, style: TextStyle(fontSize: 16)),
-                  subtitle: Text("Kelas: ${student.kelas}"),
-                  trailing: Text(
-                    "${student.totalScore} Poin",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Colors.blueAccent,
+                        child: Text("${index + 1}", style: TextStyle(color: Colors.white)),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(student.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                            Text("Kelas: ${student.kelas}"),
+                            if (student.averageScore != null)
+                              Text("Rata-rata: ${student.averageScore!.toStringAsFixed(1)}%",
+                                  style: TextStyle(color: Colors.grey[700])),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text("${student.totalScore} Poin",
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        ],
+                      )
+                    ],
                   ),
                 ),
               );

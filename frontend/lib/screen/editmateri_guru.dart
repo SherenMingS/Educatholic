@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:frontend/services/api_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
@@ -116,7 +117,7 @@ class _EditMateriPageState extends State<EditMateriPage> {
         var request = http.MultipartRequest(
           'POST',
           Uri.parse(
-              'http://127.0.0.1:8000/api/materi/update-file/${widget.id}'),
+              '${ApiService.baseUrl}/materi/update-file/${widget.id}'),
         );
 
         request.fields.addAll(fields);
@@ -135,7 +136,7 @@ class _EditMateriPageState extends State<EditMateriPage> {
         }
       } else {
         final response = await http.put(
-          Uri.parse('http://127.0.0.1:8000/api/materi/${widget.id}'),
+          Uri.parse('${ApiService.baseUrl}/materi/${widget.id}'),
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer $token',
@@ -185,7 +186,7 @@ class _EditMateriPageState extends State<EditMateriPage> {
   @override
   Widget build(BuildContext context) {
     final fileUrl = widget.file != null
-        ? 'http://127.0.0.1:8000/storage/${widget.file}'
+        ? '${ApiService.modulUrl}/storage/${widget.file}'
         : null;
 
     return Scaffold(

@@ -4,14 +4,16 @@ import 'package:frontend/screen/dashboard_siswa.dart';
 class HasilKuisPage extends StatelessWidget {
   final int totalSoal;
   final int jawabanBenar;
-  final double skor;
+  final double skorTerbaru;
+  final double skorAkhir;
   final List<Map<String, dynamic>> jawabanSalah;
 
   const HasilKuisPage({
     Key? key,
     required this.totalSoal,
     required this.jawabanBenar,
-    required this.skor,
+    required this.skorTerbaru,
+    required this.skorAkhir,
     required this.jawabanSalah,
   }) : super(key: key);
 
@@ -55,7 +57,7 @@ class HasilKuisPage extends StatelessWidget {
             padding: const EdgeInsets.all(24),
             child: Column(
               children: [
-                Text("Nilai Kamu:", style: TextStyle(fontSize: 22)),
+                Text("Nilai Attempt Ini:", style: TextStyle(fontSize: 22)),
                 SizedBox(height: 16),
                 Container(
                   padding: EdgeInsets.symmetric(vertical: 40, horizontal: 20),
@@ -73,7 +75,7 @@ class HasilKuisPage extends StatelessWidget {
                   child: Column(
                     children: [
                       Text(
-                        skor.toInt().toString(),
+                        skorTerbaru.toInt().toString(),
                         style: TextStyle(
                           fontSize: 60,
                           fontWeight: FontWeight.bold,
@@ -81,15 +83,16 @@ class HasilKuisPage extends StatelessWidget {
                         ),
                       ),
                       SizedBox(height: 10),
+                      Text("Benar: $jawabanBenar dari $totalSoal"),
                       Text(
-                          "Soal Terjawab Benar: $jawabanBenar dari $totalSoal"),
-                      Text("Skor Akhir: ${skor.toStringAsFixed(1)}"),
+                          "Skor Attempt Ini: ${skorTerbaru.toStringAsFixed(1)}"),
+                      Text("Skor Akhir: ${skorAkhir.toStringAsFixed(1)}"),
                     ],
                   ),
                 ),
                 SizedBox(height: 24),
                 Text(
-                  getFeedback(skor),
+                  getFeedback(skorAkhir),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
@@ -98,7 +101,7 @@ class HasilKuisPage extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: 20),
-                if (skor == 100)
+                if (skorAkhir == 100)
                   Column(
                     children: [
                       Icon(Icons.emoji_events, size: 50, color: Colors.amber),
@@ -112,7 +115,7 @@ class HasilKuisPage extends StatelessWidget {
                       ),
                     ],
                   ),
-                if (skor < 100 && jawabanSalah.isNotEmpty)
+                if (jawabanSalah.isNotEmpty)
                   ElevatedButton.icon(
                     onPressed: () {
                       showDialog(

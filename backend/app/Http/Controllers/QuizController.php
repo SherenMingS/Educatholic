@@ -14,7 +14,7 @@ use App\Models\QuizAnswer;
 class QuizController extends Controller
 {
     // ✅ CREATE QUIZ
-    public function createQuiz(Request $request)
+     public function createQuiz(Request $request)
     {
         $request->validate([
             'title' => 'required|string|max:255',
@@ -22,6 +22,8 @@ class QuizController extends Controller
             'materi_id' => 'required|exists:materi,id',
             'duration' => 'nullable|integer|min:1',
             'deadline' => 'nullable|date',
+            'kkm' => 'required|integer|min:0|max:100',
+            'max_attempts' => 'required|integer|min:1|max:10',
             'questions' => 'required|array|min:1',
             'questions.*.question' => 'required|string',
             'questions.*.option_1' => 'required|string',
@@ -29,6 +31,7 @@ class QuizController extends Controller
             'questions.*.option_3' => 'required|string',
             'questions.*.option_4' => 'required|string',
             'questions.*.correct_answer' => 'required|in:A,B,C,D',
+            'questions.*.image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
         $quiz = Quiz::create([
@@ -39,11 +42,19 @@ class QuizController extends Controller
             'duration' => $request->duration,
             'deadline' => $request->deadline,
             'quiz_code' => Str::random(6),
+            'kkm' => $request->kkm,
+            'max_attempts' => $request->max_attempts,
         ]);
 
         $scorePerQuestion = round(100 / count($request->questions), 2);
 
-        foreach ($request->questions as $q) {
+        foreach ($request->questions as $index => $q) {
+            $imagePath = null;
+
+            if ($request->hasFile("questions.$index.image")) {
+                $imagePath = $request->file("questions.$index.image")->store('soal', 'public');
+            }
+
             QuizQuestion::create([
                 'quiz_id' => $quiz->id,
                 'question' => $q['question'],
@@ -53,6 +64,7 @@ class QuizController extends Controller
                 'option_4' => $q['option_4'],
                 'correct_answer' => $q['correct_answer'],
                 'score' => $scorePerQuestion,
+                'image' => $imagePath,
             ]);
         }
 
@@ -153,122 +165,180 @@ class QuizController extends Controller
     }
 
     // ✅ SUBMIT QUIZ
-    public function submitQuiz(Request $request, $id)
-    {
-        $request->validate([
-            'answers' => 'required|array',
-            'answers.*.question_id' => 'required|exists:quiz_questions,id',
-            'answers.*.selected_answer' => 'required|in:A,B,C,D',
+   public function submitQuiz(Request $request, $id)
+{
+    $request->validate([
+        'answers' => 'required|array',
+        'answers.*.question_id' => 'required|exists:quiz_questions,id',
+        'answers.*.selected_answer' => 'required|in:A,B,C,D',
+    ]);
+
+    $quiz = Quiz::find($id);
+    if (!$quiz) {
+        return response()->json(['message' => 'Quiz tidak ditemukan'], 404);
+    }
+
+    $userId = auth()->id();
+
+    // ✅ Cek attempt sebelumnya
+    $attempts = QuizResult::where('quiz_id', $id)
+        ->where('user_id', $userId)
+        ->get();
+
+    $lastScore = $attempts->last()?->score ?? 0;
+
+    // ✅ Batasi jika sudah lulus atau attempt maksimal
+    if ($attempts->count() >= $quiz->max_attempts || $lastScore >= $quiz->kkm) {
+        return response()->json([
+            'status' => 'fail',
+            'message' => 'Sudah lulus atau melebihi batas attempt',
+        ], 403);
+    }
+
+    $correct = 0;
+    $total = count($request->answers);
+
+    foreach ($request->answers as $answer) {
+        $question = QuizQuestion::find($answer['question_id']);
+        if ($question && $question->correct_answer === $answer['selected_answer']) {
+            $correct++;
+        }
+    }
+
+    // ✅ Hitung skor attempt sekarang
+    $currentScore = round(($correct / $total) * 100, 2);
+
+    // ✅ Total skor semua attempt (lama + sekarang)
+    $totalScore = $attempts->sum('score') + $currentScore;
+    $totalAttempts = $attempts->count() + 1;
+    $finalScore = round($totalScore / $totalAttempts, 2);
+
+    // ✅ Simpan jawaban
+    foreach ($request->answers as $answer) {
+        $question = QuizQuestion::find($answer['question_id']);
+        $isCorrect = $question && $question->correct_answer === $answer['selected_answer'];
+
+        QuizAnswer::create([
+            'user_id' => $userId,
+            'quiz_id' => $id,
+            'question_id' => $answer['question_id'],
+            'selected_answer' => $answer['selected_answer'],
+            'is_correct' => $isCorrect ? 1 : 0,
         ]);
+    }
 
-        $quiz = Quiz::find($id);
-        if (!$quiz) {
-            return response()->json(['message' => 'Quiz tidak ditemukan'], 404);
-        }
+    // ✅ Simpan hasil attempt ke-N
+    QuizResult::create([
+        'user_id' => $userId,
+        'quiz_id' => $id,
+        'score' => $finalScore, // <- ✅ hasil final rata-rata
+        'correct_answers' => $correct,
+        'total_questions' => $total,
+    ]);
 
-        $correct = 0;
-        $total = count($request->answers);
+    // ✅ Ambil jawaban salah untuk feedback
+    $jawabanSalah = QuizAnswer::with('question')
+        ->where('user_id', $userId)
+        ->where('quiz_id', $id)
+        ->where('is_correct', 0)
+        ->get()
+        ->map(function ($item) {
+            return [
+                'pertanyaan' => $item->question->question,
+                'jawabanUser' => $item->selected_answer . ' (' . match ($item->selected_answer) {
+                    'A' => $item->question->option_1,
+                    'B' => $item->question->option_2,
+                    'C' => $item->question->option_3,
+                    'D' => $item->question->option_4,
+                    default => '-',
+                } . ')',
+                'jawabanBenar' => match ($item->question->correct_answer) {
+                    'A' => $item->question->option_1,
+                    'B' => $item->question->option_2,
+                    'C' => $item->question->option_3,
+                    'D' => $item->question->option_4,
+                    default => null,
+                },
+            ];
+        });
 
-        foreach ($request->answers as $answer) {
-            $question = QuizQuestion::find($answer['question_id']);
-            if ($question && $question->correct_answer === $answer['selected_answer']) {
-                $correct++;
-            }
-        }
+   return response()->json([
+    'status' => 'success',
+    'message' => 'Jawaban berhasil disimpan!',
+    'score' => $finalScore, // skor akhir (rerata)
+    'skor_terbaru' => $currentScore, // ✅ tambahkan ini!
+    'correct_answers' => $correct,
+    'total_questions' => $total,
+    'jawaban_salah' => $jawabanSalah
+]);
+}
 
-        $score = round(($correct / $total) * 100, 2);
 
 
+    // ✅ UPDATE QUIZ (TERMASUK MATERI_ID)
+ public function updateQuiz(Request $request, $id)
+{
+    $request->validate([
+        'title' => 'required|string|max:255',
+        'kelas' => 'required|string|max:10',
+        'materi_id' => 'required|exists:materi,id',
+        'duration' => 'nullable|integer|min:1',
+        'deadline' => 'nullable|date',
+        'kkm' => 'required|integer|min:0|max:100',
+        'max_attempts' => 'required|integer|min:1|max:10',
+        'questions' => 'nullable|array|min:1',
+        'questions.*.question' => 'required|string',
+        'questions.*.option_1' => 'required|string',
+        'questions.*.option_2' => 'required|string',
+        'questions.*.option_3' => 'required|string',
+        'questions.*.option_4' => 'required|string',
+        'questions.*.correct_answer' => 'required|in:A,B,C,D',
+        'questions.*.score' => 'required|numeric',
+    ]);
 
-        foreach ($request->answers as $answer) {
-            $question = QuizQuestion::find($answer['question_id']);
-            $isCorrect = $question && $question->correct_answer === $answer['selected_answer'];
-        
-            QuizAnswer::create([
-                'user_id' => auth()->id(),
-                'quiz_id' => $id,
-                'question_id' => $answer['question_id'],
-                'selected_answer' => $answer['selected_answer'],
-                'is_correct' => $isCorrect ? 1 : 0,
+    $quiz = Quiz::where('id', $id)->where('created_by', auth()->user()->id)->first();
+    if (!$quiz) {
+        return response()->json(['message' => 'Quiz tidak ditemukan atau tidak memiliki akses'], 403);
+    }
+
+    $quiz->update([
+        'title' => $request->title,
+        'kelas' => $request->kelas,
+        'materi_id' => $request->materi_id,
+        'duration' => $request->duration,
+        'deadline' => $request->deadline,
+        'kkm' => $request->kkm,
+        'max_attempts' => $request->max_attempts,
+    ]);
+
+    // 🔁 Jika ada pertanyaan baru, hapus lama → insert baru
+    if ($request->has('questions')) {
+        $quiz->questions()->delete();
+
+        foreach ($request->questions as $q) {
+            $imagePath = $q['image'] ?? null; // opsional
+
+            QuizQuestion::create([
+                'quiz_id' => $quiz->id,
+                'question' => $q['question'],
+                'option_1' => $q['option_1'],
+                'option_2' => $q['option_2'],
+                'option_3' => $q['option_3'],
+                'option_4' => $q['option_4'],
+                'correct_answer' => $q['correct_answer'],
+                'score' => $q['score'],
+                'image' => $imagePath,
             ]);
         }
-
-        QuizResult::create([
-            'user_id' => auth()->id(),
-            'quiz_id' => $id,
-            'score' => $score,
-            'correct_answers' => $correct,
-            'total_questions' => $total,
-        ]);
-
-        $jawabanSalah = QuizAnswer::with('question')
-    ->where('user_id', auth()->id())
-    ->where('quiz_id', $id)
-    ->where('is_correct', 0)
-    ->get()
-    ->map(function ($item) {
-        return [
-            'pertanyaan' => $item->question->question,
-            'jawabanUser' => $item->selected_answer . ' (' . match ($item->selected_answer) {
-                'A' => $item->question->option_1,
-                'B' => $item->question->option_2,
-                'C' => $item->question->option_3,
-                'D' => $item->question->option_4,
-                default => '-',
-            } . ')',
-            'jawabanBenar' => match ($item->question->correct_answer) {
-                'A' => $item->question->option_1,
-                'B' => $item->question->option_2,
-                'C' => $item->question->option_3,
-                'D' => $item->question->option_4,
-                default => null,
-            },
-     
-
-        ];
-    });
+    }
 
     return response()->json([
         'status' => 'success',
-        'message' => 'Jawaban berhasil disimpan!',
-        'score' => $score,
-        'correct_answers' => $correct,
-        'total_questions' => $total,
-        'jawaban_salah' => $jawabanSalah
+        'message' => 'Quiz berhasil diperbarui',
+        'quiz' => $quiz,
     ]);
-    
-    }
+}
 
-    // ✅ UPDATE QUIZ (TERMASUK MATERI_ID)
-    public function updateQuiz(Request $request, $id)
-    {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'kelas' => 'required|string|max:10',
-            'materi_id' => 'required|exists:materi,id',
-            'duration' => 'nullable|integer|min:1',
-            'deadline' => 'nullable|date',
-        ]);
-
-        $quiz = Quiz::where('id', $id)->where('created_by', auth()->user()->id)->first();
-        if (!$quiz) {
-            return response()->json(['message' => 'Quiz tidak ditemukan atau tidak memiliki akses'], 403);
-        }
-
-        $quiz->update([
-            'title' => $request->title,
-            'kelas' => $request->kelas,
-            'materi_id' => $request->materi_id,
-            'duration' => $request->duration,
-            'deadline' => $request->deadline,
-        ]);
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Quiz berhasil diperbarui',
-            'quiz' => $quiz,
-        ]);
-    }
 
     // ✅ DELETE QUIZ
     public function deleteQuiz($id)
@@ -286,6 +356,20 @@ class QuizController extends Controller
             'message' => 'Quiz berhasil dihapus',
         ]);
     }
+
+    public function uploadImage(Request $request)
+{
+    $request->validate([
+        'image' => 'required|image|mimes:jpg,jpeg,png|max:2048',
+    ]);
+
+    $path = $request->file('image')->store('soal', 'public');
+
+    return response()->json([
+        'url' => $path  // contoh: soal/abc123.jpg
+    ]);
+}
+
 
 
 }

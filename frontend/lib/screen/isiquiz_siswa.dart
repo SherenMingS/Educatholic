@@ -1,3 +1,4 @@
+// Full code with clickable arrow pagination for QuizPage
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:frontend/services/api_service.dart';
@@ -102,6 +103,24 @@ class _QuizPageState extends State<QuizPage> {
     _submitQuiz();
   }
 
+  void _useFiftyFifty() {
+    var currentQuestion = quizData!['questions'][currentQuestionIndex];
+    String correct = currentQuestion['correct_answer'];
+    List<String> keys = ['A', 'B', 'C', 'D'];
+    List<int> salah = [];
+
+    for (int i = 0; i < 4; i++) {
+      if (keys[i] != correct) salah.add(i);
+    }
+
+    salah.shuffle();
+    eliminatedOptionsMap[currentQuestionIndex] = salah.take(2).toSet();
+
+    setState(() {
+      isFiftyUsed = true;
+    });
+  }
+
   void _submitQuiz() async {
     if (selectedAnswers.contains(null)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -135,7 +154,8 @@ class _QuizPageState extends State<QuizPage> {
           builder: (_) => HasilKuisPage(
             totalSoal: quizData!['questions'].length,
             jawabanBenar: result['correct_answers'],
-            skor: result['score'],
+            skorTerbaru: (result['skor_terbaru'] ?? 0).toDouble(), // ✅ new
+            skorAkhir: (result['score'] ?? 0).toDouble(), // ✅ existing
             jawabanSalah:
                 List<Map<String, dynamic>>.from(result['jawaban_salah']),
           ),
@@ -148,34 +168,69 @@ class _QuizPageState extends State<QuizPage> {
     }
   }
 
-  void _useFiftyFifty() {
-    var currentQuestion = quizData!['questions'][currentQuestionIndex];
-    String correct = currentQuestion['correct_answer'];
-    List<String> keys = ['A', 'B', 'C', 'D'];
-    List<int> salah = [];
-
-    for (int i = 0; i < 4; i++) {
-      if (keys[i] != correct) salah.add(i);
-    }
-
-    salah.shuffle();
-    eliminatedOptionsMap[currentQuestionIndex] = salah.take(2).toSet();
-
-    setState(() {
-      isFiftyUsed = true;
-    });
-  }
-
   String _formatTime(int s) {
     final m = s ~/ 60;
     final rs = s % 60;
     return '${m.toString().padLeft(2, '0')}:${rs.toString().padLeft(2, '0')}';
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
+  List<Widget> _buildEllipsisPagination(int total) {
+    List<Widget> items = [];
+
+    void addButton(int i) {
+      items.add(Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: GestureDetector(
+          onTap: () => setState(() => currentQuestionIndex = i),
+          child: CircleAvatar(
+            radius: 14,
+            backgroundColor: i == currentQuestionIndex
+                ? Colors.blue
+                : (selectedAnswers[i] != null ? Colors.green : Colors.grey),
+            child: Text("${i + 1}",
+                style: TextStyle(color: Colors.white, fontSize: 12)),
+          ),
+        ),
+      ));
+    }
+
+    // Tombol Prev
+    items.add(IconButton(
+      icon: Icon(Icons.chevron_left),
+      onPressed: currentQuestionIndex > 0
+          ? () => setState(() => currentQuestionIndex--)
+          : null,
+    ));
+
+    if (total <= 5) {
+      for (int i = 0; i < total; i++) addButton(i);
+    } else {
+      if (currentQuestionIndex <= 2) {
+        for (int i = 0; i < 3; i++) addButton(i);
+        items.add(Text("..."));
+        addButton(total - 1);
+      } else if (currentQuestionIndex >= total - 3) {
+        addButton(0);
+        items.add(Text("..."));
+        for (int i = total - 3; i < total; i++) addButton(i);
+      } else {
+        addButton(0);
+        items.add(Text("..."));
+        addButton(currentQuestionIndex);
+        items.add(Text("..."));
+        addButton(total - 1);
+      }
+    }
+
+    // Tombol Next
+    items.add(IconButton(
+      icon: Icon(Icons.chevron_right),
+      onPressed: currentQuestionIndex < total - 1
+          ? () => setState(() => currentQuestionIndex++)
+          : null,
+    ));
+
+    return items;
   }
 
   @override
@@ -211,79 +266,65 @@ class _QuizPageState extends State<QuizPage> {
         body: Padding(
           padding: const EdgeInsets.all(16),
           child: isStarted
-              ? SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(children: [
-                              Icon(Icons.timer),
-                              SizedBox(width: 4),
-                              Text(_formatTime(_remainingSeconds),
-                                  style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold))
-                            ]),
-                            Row(
-                              children: List.generate(
-                                questions.length,
-                                (i) => Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(horizontal: 2),
-                                  child: CircleAvatar(
-                                    radius: 12,
-                                    backgroundColor:
-                                        i == currentQuestionIndex
-                                            ? Colors.blue
-                                            : Colors.grey,
-                                    child: Text("${i + 1}",
-                                        style: TextStyle(
-                                            color: Colors.white, fontSize: 12)),
-                                  ),
-                                ),
-                              ),
-                            )
-                          ]),
-                      SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          if (!isFiftyUsed)
-                            IconButton(
-                              icon: Icon(Icons.filter_alt_off),
-                              tooltip: '50:50 (Hapus 2 opsi)',
-                              onPressed: _useFiftyFifty,
+                          Row(children: [
+                            Icon(Icons.timer),
+                            SizedBox(width: 4),
+                            Text(_formatTime(_remainingSeconds),
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold))
+                          ]),
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children:
+                                  _buildEllipsisPagination(questions.length),
                             ),
-                          if (!isExtraTimeUsed)
-                            IconButton(
-                              icon: Icon(Icons.timer),
-                              tooltip: 'Tambah 20 detik',
-                              onPressed: () {
-                                setState(() {
-                                  _remainingSeconds += 20;
-                                  isExtraTimeUsed = true;
-                                });
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                      content:
-                                          Text("⏱ Waktu ditambah 20 detik")),
-                                );
-                              },
-                            ),
-                        ],
-                      ),
-                      SizedBox(height: 10),
-                      Text("Pertanyaan ${currentQuestionIndex + 1}",
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold)),
-                      SizedBox(height: 10),
-                      Text(current['question'],
-                          style: TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.bold)),
-                      SizedBox(height: 20),
-                      Column(
+                          )
+                        ]),
+                    SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        if (!isFiftyUsed)
+                          IconButton(
+                            icon: Icon(Icons.filter_alt_off),
+                            tooltip: '50:50 (Hapus 2 opsi)',
+                            onPressed: _useFiftyFifty,
+                          ),
+                        if (!isExtraTimeUsed)
+                          IconButton(
+                            icon: Icon(Icons.timer),
+                            tooltip: 'Tambah 20 detik',
+                            onPressed: () {
+                              setState(() {
+                                _remainingSeconds += 20;
+                                isExtraTimeUsed = true;
+                              });
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content: Text("⏱ Waktu ditambah 20 detik")),
+                              );
+                            },
+                          ),
+                      ],
+                    ),
+                    SizedBox(height: 10),
+                    Text("Pertanyaan ${currentQuestionIndex + 1}",
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold)),
+                    SizedBox(height: 10),
+                    Text(current['question'],
+                        style: TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.bold)),
+                    SizedBox(height: 20),
+                    Expanded(
+                      child: ListView(
                         children: List.generate(4, (i) {
                           if (eliminated.contains(i)) return SizedBox.shrink();
                           bool isSelected =
@@ -344,31 +385,30 @@ class _QuizPageState extends State<QuizPage> {
                           );
                         }),
                       ),
-                      SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          ElevatedButton(
-                            onPressed: currentQuestionIndex > 0
-                                ? () => setState(
-                                    () => currentQuestionIndex--)
-                                : null,
-                            child: Text("Sebelumnya"),
-                          ),
-                          currentQuestionIndex < questions.length - 1
-                              ? ElevatedButton(
-                                  onPressed: () =>
-                                      setState(() => currentQuestionIndex++),
-                                  child: Text("Selanjutnya"),
-                                )
-                              : ElevatedButton(
-                                  onPressed: _submitQuiz,
-                                  child: Text("Selesai"),
-                                ),
-                        ],
-                      ),
-                    ],
-                  ),
+                    ),
+                    SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        ElevatedButton(
+                          onPressed: currentQuestionIndex > 0
+                              ? () => setState(() => currentQuestionIndex--)
+                              : null,
+                          child: Text("Sebelumnya"),
+                        ),
+                        currentQuestionIndex < questions.length - 1
+                            ? ElevatedButton(
+                                onPressed: () =>
+                                    setState(() => currentQuestionIndex++),
+                                child: Text("Selanjutnya"),
+                              )
+                            : ElevatedButton(
+                                onPressed: _submitQuiz,
+                                child: Text("Selesai"),
+                              ),
+                      ],
+                    ),
+                  ],
                 )
               : Center(
                   child: Text("Menunggu untuk mulai kuis...",

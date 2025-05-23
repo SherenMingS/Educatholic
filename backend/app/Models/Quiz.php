@@ -9,7 +9,18 @@ class Quiz extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['title', 'kelas', 'materi_id','created_by', 'duration', 'deadline', 'quiz_code'];
+    protected $fillable = [
+    'title',
+    'kelas',
+    'materi_id',
+    'created_by',
+    'duration',
+    'deadline',
+    'quiz_code',
+    'kkm',              // ✅ tambahkan
+    'max_attempts'      // ✅ tambahkan
+];
+
 
     public function questions()
     {

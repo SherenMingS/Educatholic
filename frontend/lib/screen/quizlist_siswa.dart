@@ -17,6 +17,7 @@ class StudentQuizListPage extends StatefulWidget {
 
 class _StudentQuizListPageState extends State<StudentQuizListPage> {
   List<Quiz> quizzes = [];
+  Map<int, bool> canRetryMap = {};
   String? token;
   bool isLoading = true;
   int _selectedIndex = 1;
@@ -34,60 +35,41 @@ class _StudentQuizListPageState extends State<StudentQuizListPage> {
 
     if (savedToken != null && savedClass != null) {
       token = savedToken;
-      _fetchQuizzes(savedClass);
-    } else {
-      setState(() => isLoading = false);
+      await _fetchQuizzes(savedClass);
     }
+    setState(() => isLoading = false);
   }
 
   Future<void> _fetchQuizzes(String kelas) async {
     try {
       final quizzesList = await ApiService.getQuizzesForStudents(token!, kelas);
+      final retryMap = <int, bool>{};
+
+      for (var quiz in quizzesList) {
+        try {
+          final result = await ApiService.checkQuizStatus(token!, quiz.id);
+          retryMap[quiz.id] = result['can_retry'] == true;
+          quiz.lastScore = result['last_score']?.toDouble();
+          quiz.currentAttempts = result['current_attempts'];
+          quiz.maxAttempts = result['max_attempts'];
+          print("📦 STATUS QUIZ ${quiz.id}: $result");
+        } catch (e) {
+          retryMap[quiz.id] = false;
+          quiz.lastScore = null;
+          quiz.currentAttempts = null;
+          quiz.maxAttempts = quiz.maxAttempts ?? 1;
+          print("Quiz ${quiz.id} status error: $e");
+        }
+      }
+
       setState(() {
         quizzes = quizzesList;
-        isLoading = false;
+        canRetryMap = retryMap;
       });
     } catch (e) {
-      setState(() => isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Gagal memuat kuis: $e")),
       );
-    }
-  }
-
-  void _onItemTapped(int index) async {
-    if (index == _selectedIndex) return;
-
-    setState(() {
-      _selectedIndex = index;
-    });
-
-    switch (index) {
-      case 0:
-        Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (_) => MateriPage()));
-        break;
-      case 1:
-        break;
-      case 2:
-        Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (_) => DashboardSiswa()));
-        break;
-      case 3:
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        String? savedToken = prefs.getString('token');
-        if (savedToken != null) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (_) => LeaderboardScreen(token: savedToken)),
-          );
-        }
-        break;
-      case 4:
-        Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (_) => ProfilePage()));
-        break;
     }
   }
 
@@ -134,13 +116,16 @@ class _StudentQuizListPageState extends State<StudentQuizListPage> {
               : ListView.builder(
                   padding: EdgeInsets.all(16),
                   itemCount: quizzes.length,
-                  itemBuilder: (context, index) =>
-                      _buildQuizCard(quizzes[index]),
+                  itemBuilder: (context, index) {
+                    final quiz = quizzes[index];
+                    final canRetry = canRetryMap[quiz.id] ?? false;
+                    return _buildQuizCard(quiz, canRetry: canRetry);
+                  },
                 ),
     );
   }
 
-  Widget _buildQuizCard(Quiz quiz) {
+  Widget _buildQuizCard(Quiz quiz, {bool canRetry = false}) {
     final isLocked = !quiz.isRead;
     final theme = Theme.of(context);
 
@@ -162,9 +147,46 @@ class _StudentQuizListPageState extends State<StudentQuizListPage> {
             color: theme.colorScheme.onSurface,
           ),
         ),
-        subtitle: Text(
-          "Kelas: ${quiz.kelas} | ${quiz.questionCount} Soal",
-          style: theme.textTheme.bodyMedium,
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Kelas: ${quiz.kelas} | ${quiz.questionCount} Soal"),
+            SizedBox(height: 4),
+            Text(
+              "Skor Terakhir: ${quiz.lastScore != null ? quiz.lastScore!.toStringAsFixed(1) : '-'} | Attempt: ${quiz.currentAttempts ?? '-'} / ${quiz.maxAttempts ?? '-'}",
+              style: TextStyle(fontSize: 12),
+            ),
+            SizedBox(height: 6),
+            if (canRetry && (quiz.currentAttempts ?? 0) > 0)
+              ElevatedButton.icon(
+                onPressed: () => _checkQuizStatus(quiz.id),
+                icon: Icon(Icons.refresh),
+                label: Text("Coba Lagi"),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+              )
+            else if ((quiz.lastScore != null && quiz.lastScore! >= quiz.kkm!))
+              ElevatedButton.icon(
+                onPressed: () => _showDialog(
+                  "Kuis Tidak Bisa Diulang",
+                  "Kamu sudah mengerjakan kuis ini dan nilaimu sudah mencapai atau melebihi KKM.",
+                ),
+                icon: Icon(Icons.info_outline),
+                label: Text("Lihat Info"),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
+              )
+            else if ((quiz.lastScore != null &&
+                quiz.lastScore! < quiz.kkm! &&
+                quiz.currentAttempts == quiz.maxAttempts))
+              ElevatedButton.icon(
+                onPressed: () => _showDialog(
+                  "Kuis Tidak Bisa Diulang",
+                  "Kamu telah mencapai batas maksimal percobaan (${quiz.maxAttempts})",
+                ),
+                icon: Icon(Icons.info_outline),
+                label: Text("Lihat Info"),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
+              ),
+          ],
         ),
         trailing: Icon(
           isLocked ? Icons.lock : Icons.arrow_forward_ios,
@@ -173,7 +195,10 @@ class _StudentQuizListPageState extends State<StudentQuizListPage> {
         ),
         onTap: isLocked
             ? () => _showDialog("Peringatan", "Baca materi terlebih dahulu.")
-            : () => _checkQuizStatus(quiz.id),
+            : (!canRetry
+                ? () => _showDialog("Kuis Tidak Bisa Diulang",
+                    "Kamu tidak dapat mengerjakan kuis ini lagi.")
+                : () => _checkQuizStatus(quiz.id)),
       ),
     );
   }
@@ -204,5 +229,38 @@ class _StudentQuizListPageState extends State<StudentQuizListPage> {
       ],
       onTap: _onItemTapped,
     );
+  }
+
+  void _onItemTapped(int index) async {
+    if (index == _selectedIndex) return;
+
+    setState(() => _selectedIndex = index);
+
+    switch (index) {
+      case 0:
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (_) => MateriPage()));
+        break;
+      case 1:
+        break;
+      case 2:
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (_) => DashboardSiswa()));
+        break;
+      case 3:
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        String? savedToken = prefs.getString('token');
+        if (savedToken != null) {
+          Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => LeaderboardScreen(token: savedToken)));
+        }
+        break;
+      case 4:
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (_) => ProfilePage()));
+        break;
+    }
   }
 }

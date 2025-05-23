@@ -14,6 +14,7 @@ class StudentController extends Controller
             'nama' => $siswa->name,
             'email' => $siswa->email,
             'kelas' => $siswa->kelas,
+            'gender' => $siswa->gender,
             'photo' => $siswa->photo,
         ]);
     }

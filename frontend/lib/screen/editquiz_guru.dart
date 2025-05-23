@@ -1,3 +1,5 @@
+// Versi lengkap EditQuizPage dengan dukungan kkm & max_attempts
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,6 +23,8 @@ class _EditQuizPageState extends State<EditQuizPage> {
   late TextEditingController durationController;
   late TextEditingController deadlineController;
   late TextEditingController kelasController;
+  late TextEditingController kkmController;
+  late TextEditingController attemptController;
   DateTime? selectedDeadline;
   List<Map<String, TextEditingController>> questionControllers = [];
   String? token;
@@ -31,11 +35,11 @@ class _EditQuizPageState extends State<EditQuizPage> {
   void initState() {
     super.initState();
     titleController = TextEditingController(text: widget.quiz.title);
-    durationController =
-        TextEditingController(text: widget.quiz.duration.toString());
-    deadlineController =
-        TextEditingController(text: widget.quiz.deadline ?? '');
+    durationController = TextEditingController(text: widget.quiz.duration.toString());
+    deadlineController = TextEditingController(text: widget.quiz.deadline ?? '');
     kelasController = TextEditingController(text: widget.quiz.kelas ?? '');
+    kkmController = TextEditingController(text: widget.quiz.kkm?.toString() ?? '75');
+    attemptController = TextEditingController(text: widget.quiz.maxAttempts?.toString() ?? '1');
     selectedMateriId = widget.quiz.materiId?.toString();
     _loadToken();
   }
@@ -50,8 +54,7 @@ class _EditQuizPageState extends State<EditQuizPage> {
   Future<void> _loadMateriList() async {
     if (token == null || kelasController.text.isEmpty) return;
     try {
-      final materiData =
-          await ApiService.getMateri(token!, kelasController.text);
+      final materiData = await ApiService.getMateri(token!, kelasController.text);
       setState(() {
         materiList = List<Map<String, dynamic>>.from(materiData);
       });
@@ -77,9 +80,7 @@ class _EditQuizPageState extends State<EditQuizPage> {
         }).toList();
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Gagal memuat soal: $e")),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Gagal memuat soal: $e")));
     }
   }
 
@@ -96,17 +97,10 @@ class _EditQuizPageState extends State<EditQuizPage> {
         initialTime: TimeOfDay.fromDateTime(selectedDeadline ?? DateTime.now()),
       );
       if (pickedTime != null) {
-        DateTime finalDateTime = DateTime(
-          pickedDate.year,
-          pickedDate.month,
-          pickedDate.day,
-          pickedTime.hour,
-          pickedTime.minute,
-        );
+        DateTime finalDateTime = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, pickedTime.hour, pickedTime.minute);
         setState(() {
           selectedDeadline = finalDateTime;
-          deadlineController.text =
-              DateFormat('yyyy-MM-dd HH:mm:ss').format(finalDateTime);
+          deadlineController.text = DateFormat('yyyy-MM-dd HH:mm:ss').format(finalDateTime);
         });
       }
     }
@@ -135,9 +129,7 @@ class _EditQuizPageState extends State<EditQuizPage> {
     if (!_formKey.currentState!.validate()) return;
     if (token == null) return;
     if (questionControllers.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Minimal 1 soal harus ada!")),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Minimal 1 soal harus ada!")));
       return;
     }
 
@@ -159,28 +151,22 @@ class _EditQuizPageState extends State<EditQuizPage> {
       "kelas": kelasController.text,
       "materi_id": selectedMateriId,
       "duration": int.tryParse(durationController.text) ?? 30,
-      "deadline":
-          deadlineController.text.isNotEmpty ? deadlineController.text : null,
+      "deadline": deadlineController.text.isNotEmpty ? deadlineController.text : null,
+      "kkm": int.tryParse(kkmController.text) ?? 75,
+      "max_attempts": int.tryParse(attemptController.text) ?? 1,
       "questions": questions,
     };
 
     try {
       await ApiService.updateQuiz(widget.quiz.id, quizData, token!);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Quiz berhasil diperbarui")),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Quiz berhasil diperbarui")));
       Navigator.pop(context, true);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Gagal memperbarui quiz: $e")),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Gagal memperbarui quiz: $e")));
     }
   }
 
-  Widget _buildFormField(String label, TextEditingController controller,
-      {TextInputType? keyboardType,
-      bool readOnly = false,
-      VoidCallback? onTap}) {
+  Widget _buildFormField(String label, TextEditingController controller, {TextInputType? keyboardType, bool readOnly = false, VoidCallback? onTap}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: TextFormField(
@@ -192,8 +178,7 @@ class _EditQuizPageState extends State<EditQuizPage> {
           labelText: label,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        validator: (val) =>
-            val == null || val.isEmpty ? "$label tidak boleh kosong" : null,
+        validator: (val) => val == null || val.isEmpty ? "$label tidak boleh kosong" : null,
       ),
     );
   }
@@ -215,14 +200,10 @@ class _EditQuizPageState extends State<EditQuizPage> {
               value: q["correct_answer"]!.text,
               decoration: InputDecoration(
                 labelText: "Jawaban Benar",
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              items: ["A", "B", "C", "D"]
-                  .map((opt) => DropdownMenuItem(value: opt, child: Text(opt)))
-                  .toList(),
-              onChanged: (val) =>
-                  setState(() => q["correct_answer"]!.text = val!),
+              items: ["A", "B", "C", "D"].map((opt) => DropdownMenuItem(value: opt, child: Text(opt))).toList(),
+              onChanged: (val) => setState(() => q["correct_answer"]!.text = val!),
             ),
             SizedBox(height: 10),
             ElevatedButton(
@@ -239,10 +220,7 @@ class _EditQuizPageState extends State<EditQuizPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: CustomPageAppBar(
-        title: 'Edit Kuis',
-        icon: Icons.edit, // Provide an appropriate icon
-      ),
+      appBar: CustomPageAppBar(title: 'Edit Kuis', icon: Icons.edit),
       bottomNavigationBar: EmptyBottomBar(),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -251,14 +229,12 @@ class _EditQuizPageState extends State<EditQuizPage> {
           child: ListView(
             children: [
               _buildFormField("Judul Kuis", titleController),
-              _buildFormField("Kelas (otomatis)", kelasController,
-                  readOnly: true),
+              _buildFormField("Kelas (otomatis)", kelasController, readOnly: true),
               DropdownButtonFormField<String>(
                 value: selectedMateriId,
                 decoration: InputDecoration(
                   labelText: "Pilih Materi",
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 items: materiList.map((materi) {
                   return DropdownMenuItem(
@@ -266,36 +242,22 @@ class _EditQuizPageState extends State<EditQuizPage> {
                     child: Text(materi['judul']),
                   );
                 }).toList(),
-                onChanged: (val) {
-                  setState(() {
-                    selectedMateriId = val;
-                  });
-                },
+                onChanged: (val) => setState(() => selectedMateriId = val),
                 validator: (value) => value == null ? "Pilih materi" : null,
               ),
-              SizedBox(height: 10),
-              _buildFormField("Durasi (menit)", durationController,
-                  keyboardType: TextInputType.number),
-              _buildFormField("Deadline", deadlineController,
-                  readOnly: true, onTap: _pickDeadline),
+              _buildFormField("Nilai KKM", kkmController, keyboardType: TextInputType.number),
+              _buildFormField("Max Attempts", attemptController, keyboardType: TextInputType.number),
+              _buildFormField("Durasi (menit)", durationController, keyboardType: TextInputType.number),
+              _buildFormField("Deadline", deadlineController, readOnly: true, onTap: _pickDeadline),
               SizedBox(height: 20),
-              Text("Daftar Soal",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text("Daftar Soal", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               SizedBox(height: 10),
-              ...questionControllers
-                  .asMap()
-                  .entries
-                  .map((e) => _buildQuestionCard(e.key, e.value)),
-              ElevatedButton(
-                onPressed: _addQuestion,
-                child: Text("Tambah Soal"),
-              ),
+              ...questionControllers.asMap().entries.map((e) => _buildQuestionCard(e.key, e.value)),
+              ElevatedButton(onPressed: _addQuestion, child: Text("Tambah Soal")),
               SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _submitQuiz,
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
-                    padding: EdgeInsets.symmetric(vertical: 12)),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.teal, padding: EdgeInsets.symmetric(vertical: 12)),
                 child: Text("Simpan Perubahan"),
               ),
             ],

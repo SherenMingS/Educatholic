@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:frontend/services/api_service.dart';
 import 'package:http/http.dart' as http;
 
 class ResetPasswordOtpPage extends StatefulWidget {
@@ -26,7 +27,7 @@ class _ResetPasswordOtpPageState extends State<ResetPasswordOtpPage> {
     setState(() => _isLoading = true);
 
     final response = await http.post(
-      Uri.parse('http://127.0.0.1:8000/api/reset-password'),
+      Uri.parse('${ApiService.baseUrl}/reset-password'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'email': _emailController.text,

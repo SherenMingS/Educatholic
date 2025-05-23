@@ -5,8 +5,12 @@ import '../models/quiz.dart';
 import '../models/leaderboard.dart';
 
 class ApiService {
-  static const String baseUrl =
-      'http://127.0.0.1:8000/api'; // Ganti dengan URL backend-mu
+  // Ganti dengan URL backend-mu
+  // static const String baseUrl = 'http://10.61.138.94:8000/api';
+  static const String baseUrl = 'http://127.0.0.1:8000/api';
+
+  // static const String modulUrl = 'http://10.61.138.94:8000';
+  static const String modulUrl = 'http://127.0.0.1:8000';
 
   static Future<List<Student>> getStudents(String kelas, String token) async {
     final response = await http.get(
@@ -330,17 +334,15 @@ class ApiService {
       },
     );
 
-    if (response.statusCode == 200) {
-      Map<String, dynamic> responseJson = jsonDecode(response.body);
+    final data = jsonDecode(response.body);
 
-      // Cek apakah ada status 'failed' yang berarti kuis sudah pernah dikerjakan
-      if (responseJson['status'] == 'failed') {
-        throw Exception('Anda sudah mengerjakan kuis ini');
-      }
-
-      return responseJson;
+    // ✅ Tetap kembalikan data meskipun status failed
+    if (response.statusCode == 200 && data.containsKey('last_score')) {
+      return data;
+    } else if (data['status'] == 'failed' && data['message'] != null) {
+      return data; // ⬅️ Jangan throw error, tapi tetap return data!
     } else {
-      throw Exception('Failed to check quiz status: ${response.body}');
+      throw Exception("Gagal memeriksa status kuis");
     }
   }
 }

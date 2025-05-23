@@ -1,5 +1,12 @@
+// Versi lengkap AddQuizPage dengan input KKM & Max Attempts
+
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../widgets/custom_appbar.dart';
@@ -15,10 +22,12 @@ class _AddQuizPageState extends State<AddQuizPage> {
   TextEditingController titleController = TextEditingController();
   TextEditingController durationController = TextEditingController();
   TextEditingController deadlineController = TextEditingController();
+  TextEditingController kkmController = TextEditingController(text: "75");
+  TextEditingController attemptController = TextEditingController(text: "2");
   String? selectedClass;
   String? token;
   DateTime? selectedDeadline;
-  List<Map<String, TextEditingController>> questionControllers = [];
+  List<Map<String, dynamic>> questionControllers = [];
   List<Map<String, dynamic>> materiList = [];
   String? selectedMateriId;
 
@@ -34,7 +43,7 @@ class _AddQuizPageState extends State<AddQuizPage> {
     token = prefs.getString('token');
     selectedClass = prefs.getString('kelas_guru');
     await _loadMateriList();
-    setState(() {}); // update tampilan kelas setelah loaded
+    setState(() {});
   }
 
   Future<void> _loadMateriList() async {
@@ -58,6 +67,7 @@ class _AddQuizPageState extends State<AddQuizPage> {
         "option_3": TextEditingController(),
         "option_4": TextEditingController(),
         "correct_answer": TextEditingController(text: "A"),
+        "imageUrl": null,
       });
     });
   }
@@ -66,6 +76,48 @@ class _AddQuizPageState extends State<AddQuizPage> {
     setState(() {
       questionControllers.removeAt(index);
     });
+  }
+
+  Future<String?> _uploadImageToServer(XFile pickedFile) async {
+    try {
+      http.MultipartFile multipartFile;
+      if (kIsWeb) {
+        Uint8List bytes = await pickedFile.readAsBytes();
+        multipartFile = http.MultipartFile.fromBytes('image', bytes,
+            filename: pickedFile.name);
+      } else {
+        multipartFile =
+            await http.MultipartFile.fromPath('image', pickedFile.path);
+      }
+      var request = http.MultipartRequest(
+          'POST', Uri.parse('${ApiService.baseUrl}/upload-question-image'));
+      request.files.add(multipartFile);
+      request.headers['Authorization'] = 'Bearer $token';
+      var response = await request.send();
+      var responseBody = await http.Response.fromStream(response);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(responseBody.body);
+        return data['url'];
+      } else {
+        throw Exception("Upload gagal: ${responseBody.body}");
+      }
+    } catch (e) {
+      print("❌ Upload gagal: $e");
+    }
+    return null;
+  }
+
+  Future<void> _pickImage(int index) async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      final uploadedUrl = await _uploadImageToServer(pickedFile);
+      if (uploadedUrl != null) {
+        setState(() {
+          questionControllers[index]['imageUrl'] = uploadedUrl;
+        });
+      }
+    }
   }
 
   Future<void> _pickDeadline() async {
@@ -97,45 +149,54 @@ class _AddQuizPageState extends State<AddQuizPage> {
         token == null ||
         selectedClass == null) return;
     if (questionControllers.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Minimal 1 soal harus ada!")),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Minimal 1 soal harus ada!")));
       return;
     }
-
-    double scorePerQuestion = 100 / questionControllers.length;
-    List<Map<String, dynamic>> questions = questionControllers.map((q) {
-      return {
-        "question": q["question"]!.text,
-        "option_1": q["option_1"]!.text,
-        "option_2": q["option_2"]!.text,
-        "option_3": q["option_3"]!.text,
-        "option_4": q["option_4"]!.text,
-        "correct_answer": q["correct_answer"]!.text,
-        "score": scorePerQuestion.toStringAsFixed(2),
-      };
-    }).toList();
-
-    Map<String, dynamic> quizData = {
-      "title": titleController.text,
-      "kelas": selectedClass,
-      "materi_id": selectedMateriId,
-      "duration": int.tryParse(durationController.text) ?? 30,
-      "deadline":
-          deadlineController.text.isNotEmpty ? deadlineController.text : null,
-      "questions": questions,
-    };
-
     try {
-      await ApiService.createQuiz(quizData, token!);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Quiz berhasil dibuat")),
-      );
-      Navigator.pop(context, true);
+      var request = http.MultipartRequest(
+          'POST', Uri.parse('${ApiService.baseUrl}/quizzes'));
+      request.headers['Authorization'] = 'Bearer $token';
+      request.fields['title'] = titleController.text;
+      request.fields['kelas'] = selectedClass!;
+      request.fields['materi_id'] = selectedMateriId!;
+      request.fields['duration'] =
+          (int.tryParse(durationController.text) ?? 30).toString();
+      if (deadlineController.text.isNotEmpty) {
+        request.fields['deadline'] = deadlineController.text;
+      }
+      request.fields['kkm'] = kkmController.text;
+      request.fields['max_attempts'] = attemptController.text;
+
+      for (int i = 0; i < questionControllers.length; i++) {
+        final q = questionControllers[i];
+        final prefix = 'questions[$i]';
+        request.fields['$prefix[question]'] = q["question"].text;
+        request.fields['$prefix[option_1]'] = q["option_1"].text;
+        request.fields['$prefix[option_2]'] = q["option_2"].text;
+        request.fields['$prefix[option_3]'] = q["option_3"].text;
+        request.fields['$prefix[option_4]'] = q["option_4"].text;
+        request.fields['$prefix[correct_answer]'] = q["correct_answer"].text;
+        request.fields['$prefix[score]'] =
+            (100 / questionControllers.length).toStringAsFixed(2);
+        if (q["imageUrl"] != null) {
+          request.fields['$prefix[image]'] = q["imageUrl"];
+        }
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("Quiz berhasil dibuat")));
+        Navigator.pop(context, true);
+      } else {
+        throw Exception("Gagal: ${response.body}");
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Gagal membuat quiz: $e")),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Gagal membuat quiz: $e")));
     }
   }
 
@@ -160,7 +221,7 @@ class _AddQuizPageState extends State<AddQuizPage> {
     );
   }
 
-  Widget _buildQuestionCard(int index, Map<String, TextEditingController> q) {
+  Widget _buildQuestionCard(int index, Map<String, dynamic> q) {
     return Card(
       margin: EdgeInsets.symmetric(vertical: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -168,13 +229,13 @@ class _AddQuizPageState extends State<AddQuizPage> {
         padding: const EdgeInsets.all(12),
         child: Column(
           children: [
-            _buildFormField("Pertanyaan", q["question"]!),
-            _buildFormField("Opsi A", q["option_1"]!),
-            _buildFormField("Opsi B", q["option_2"]!),
-            _buildFormField("Opsi C", q["option_3"]!),
-            _buildFormField("Opsi D", q["option_4"]!),
+            _buildFormField("Pertanyaan", q["question"]),
+            _buildFormField("Opsi A", q["option_1"]),
+            _buildFormField("Opsi B", q["option_2"]),
+            _buildFormField("Opsi C", q["option_3"]),
+            _buildFormField("Opsi D", q["option_4"]),
             DropdownButtonFormField<String>(
-              value: q["correct_answer"]!.text,
+              value: q["correct_answer"].text,
               decoration: InputDecoration(
                 labelText: "Jawaban Benar",
                 border:
@@ -184,8 +245,20 @@ class _AddQuizPageState extends State<AddQuizPage> {
                   .map((opt) => DropdownMenuItem(value: opt, child: Text(opt)))
                   .toList(),
               onChanged: (val) =>
-                  setState(() => q["correct_answer"]!.text = val!),
+                  setState(() => q["correct_answer"].text = val!),
             ),
+            SizedBox(height: 10),
+            Row(children: [
+              ElevatedButton.icon(
+                onPressed: () => _pickImage(index),
+                icon: Icon(Icons.image),
+                label: Text("Upload Gambar"),
+              ),
+              SizedBox(width: 10),
+              if (q['imageUrl'] != null)
+                Image.network('${ApiService.modulUrl}/storage/' + q['imageUrl'],
+                    width: 100, height: 100, fit: BoxFit.cover)
+            ]),
             SizedBox(height: 10),
             ElevatedButton(
               onPressed: () => _removeQuestion(index),
@@ -210,8 +283,8 @@ class _AddQuizPageState extends State<AddQuizPage> {
           child: ListView(
             children: [
               _buildFormField("Judul Kuis", titleController),
-              _buildFormField("Kelas ",
-                  TextEditingController(text: selectedClass ?? ""),
+              _buildFormField(
+                  "Kelas", TextEditingController(text: selectedClass ?? ""),
                   readOnly: true),
               DropdownButtonFormField<String>(
                 value: selectedMateriId,
@@ -229,7 +302,10 @@ class _AddQuizPageState extends State<AddQuizPage> {
                 onChanged: (val) => setState(() => selectedMateriId = val),
                 validator: (val) => val == null ? "Pilih materi" : null,
               ),
-              SizedBox(height: 10),
+              _buildFormField("Nilai KKM", kkmController,
+                  keyboardType: TextInputType.number),
+              _buildFormField("Max Attempts", attemptController,
+                  keyboardType: TextInputType.number),
               _buildFormField("Durasi (menit)", durationController,
                   keyboardType: TextInputType.number),
               _buildFormField("Deadline", deadlineController,
@@ -243,9 +319,7 @@ class _AddQuizPageState extends State<AddQuizPage> {
                   .entries
                   .map((e) => _buildQuestionCard(e.key, e.value)),
               ElevatedButton(
-                onPressed: _addQuestion,
-                child: Text("Tambah Soal"),
-              ),
+                  onPressed: _addQuestion, child: Text("Tambah Soal")),
               SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _submitQuiz,

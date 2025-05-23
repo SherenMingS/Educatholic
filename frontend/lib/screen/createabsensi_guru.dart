@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -68,7 +69,7 @@ class _CreateAbsensiGuruPageState extends State<CreateAbsensiGuruPage> {
     setState(() => _loading = true);
 
     final response = await http.post(
-      Uri.parse('http://localhost:8000/api/attendance-sessions'),
+      Uri.parse('${ApiService.baseUrl}/attendance-sessions'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',

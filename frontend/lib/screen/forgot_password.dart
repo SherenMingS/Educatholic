@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:frontend/services/api_service.dart';
 import 'package:http/http.dart' as http;
 import 'reset_password.dart';
 
@@ -25,7 +26,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     setState(() => _isLoading = true);
 
     final response = await http.post(
-      Uri.parse('http://127.0.0.1:8000/api/forgot-password'),
+      Uri.parse('${ApiService.baseUrl}/forgot-password'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'email': email}),
     );

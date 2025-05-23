@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/screen/editmateri_guru.dart';
 import 'package:frontend/screen/materi_guru.dart';
 import 'package:frontend/screen/profile_guru.dart';
+import 'package:frontend/services/api_service.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:frontend/screen/dashboard_guru.dart';
@@ -40,7 +41,7 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://127.0.0.1:8000/api/materi?kelas=$kelas'),
+        Uri.parse('${ApiService.baseUrl}/materi?kelas=$kelas'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json'
@@ -97,7 +98,7 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
     String? token = prefs.getString('token');
 
     final response = await http.delete(
-      Uri.parse('http://127.0.0.1:8000/api/materi/$id'),
+      Uri.parse('${ApiService.baseUrl}/materi/$id'),
       headers: {
         'Authorization': 'Bearer $token',
       },

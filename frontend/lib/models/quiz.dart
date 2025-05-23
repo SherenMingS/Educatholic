@@ -4,11 +4,19 @@ class Quiz {
   final String kelas;
   final int duration;
   final String? deadline;
-  final int? materiId; // ID materi terkait kuis
+  final int? materiId;
   final int questionCount;
   final List<Question> questions;
   final bool isCompleted;
-  final bool isRead; // Track if the quiz is completed (instead of isRead)
+  final bool isRead;
+
+  // ✅ Tambahan untuk retry kuis
+  final int? kkm;
+  int? maxAttempts;
+
+  // ✅ Tambahan baru: untuk tampilkan info status
+  double? lastScore;
+  int? currentAttempts;
 
   Quiz({
     required this.id,
@@ -20,7 +28,13 @@ class Quiz {
     required this.questionCount,
     required this.questions,
     required this.isCompleted,
-    required this.isRead, // Use this field to check quiz completion
+    required this.isRead,
+    this.kkm,
+    this.maxAttempts,
+
+    // ✅ Tambahan baru
+    this.lastScore,
+    this.currentAttempts,
   });
 
   factory Quiz.fromJson(Map<String, dynamic> json) {
@@ -37,10 +51,10 @@ class Quiz {
               .map((q) => Question.fromJson(q))
               .toList()
           : [],
-      isCompleted: json['is_completed'] ??
-          false, // Pastikan ini sesuai dengan data di backend
-      isRead: json['is_read'] ??
-          false, // Menggunakan 'is_read' dari backend untuk status materi dibaca
+      isCompleted: json['is_completed'] ?? false,
+      isRead: json['is_read'] ?? false,
+      kkm: json['kkm'],
+      maxAttempts: json['max_attempts'],
     );
   }
 }

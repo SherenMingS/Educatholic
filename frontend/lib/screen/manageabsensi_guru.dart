@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/services/api_service.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -31,7 +32,7 @@ class _ManageAbsensiPageState extends State<ManageAbsensiPage> {
 
     final response = await http.get(
       Uri.parse(
-          'http://localhost:8000/api/attendance-records/session/${widget.sessionId}'),
+          '${ApiService.baseUrl}/attendance-records/session/${widget.sessionId}'),
       headers: {
         'Authorization': 'Bearer $token',
       },
@@ -53,7 +54,7 @@ class _ManageAbsensiPageState extends State<ManageAbsensiPage> {
     String? token = prefs.getString('token');
 
     final response = await http.put(
-      Uri.parse('http://localhost:8000/api/attendance-records/$userId'),
+      Uri.parse('${ApiService.baseUrl}/attendance-records/$userId'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',

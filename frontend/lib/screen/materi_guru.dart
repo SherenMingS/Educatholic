@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:io' if (dart.library.html) 'dart:html';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:frontend/services/api_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:dropdown_search/dropdown_search.dart';
@@ -55,7 +56,7 @@ class _KelolaMateriPageState extends State<KelolaMateriPage> {
 
   Future<void> fetchBooks() async {
     final res =
-        await http.get(Uri.parse('http://127.0.0.1:8000/api/bible/books'));
+        await http.get(Uri.parse('${ApiService.baseUrl}/bible/books'));
     if (res.statusCode == 200) {
       setState(() {
         books = List<String>.from(jsonDecode(res.body));
@@ -65,7 +66,7 @@ class _KelolaMateriPageState extends State<KelolaMateriPage> {
 
   Future<void> fetchChapters(String book) async {
     final res = await http
-        .get(Uri.parse('http://127.0.0.1:8000/api/bible/chapters?book=$book'));
+        .get(Uri.parse('${ApiService.baseUrl}/bible/chapters?book=$book'));
     if (res.statusCode == 200) {
       setState(() {
         chapters = List<int>.from(jsonDecode(res.body));
@@ -75,7 +76,7 @@ class _KelolaMateriPageState extends State<KelolaMateriPage> {
 
   Future<void> fetchVerses(String book, int chapter) async {
     final res = await http.get(Uri.parse(
-        'http://127.0.0.1:8000/api/bible/verses?book=$book&chapter=$chapter'));
+        '${ApiService.baseUrl}/bible/verses?book=$book&chapter=$chapter'));
     if (res.statusCode == 200) {
       setState(() {
         verses = List<int>.from(jsonDecode(res.body));
@@ -85,7 +86,7 @@ class _KelolaMateriPageState extends State<KelolaMateriPage> {
 
   Future<void> fetchIsiAyat() async {
     final res = await http.get(Uri.parse(
-        'http://127.0.0.1:8000/api/bible/lookup?book=$selectedBook&chapter=$selectedChapter&verse=$selectedVerse'));
+        '${ApiService.baseUrl}/bible/lookup?book=$selectedBook&chapter=$selectedChapter&verse=$selectedVerse'));
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
       setState(() {
@@ -109,7 +110,7 @@ class _KelolaMateriPageState extends State<KelolaMateriPage> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://127.0.0.1:8000/api/materi?kelas=$kelas'),
+        Uri.parse('${ApiService.baseUrl}/materi?kelas=$kelas'),
         headers: {
           'Authorization': 'Bearer $token',
           'Accept': 'application/json',
@@ -150,7 +151,7 @@ class _KelolaMateriPageState extends State<KelolaMateriPage> {
     try {
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('http://127.0.0.1:8000/api/materi'),
+        Uri.parse('${ApiService.baseUrl}/materi'),
       );
       request.fields['judul'] = _judulController.text;
       request.fields['deskripsi'] = _deskripsiController.text;

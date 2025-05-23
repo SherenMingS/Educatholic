@@ -79,6 +79,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/quizzes/{id}', [QuizController::class, 'getQuizDetail'])->middleware('role:guru'); // Ambil detail quiz
     Route::put('/quizzes/{id}', [QuizController::class, 'updateQuiz'])->middleware('role:guru');
     Route::delete('/quizzes/{id}', [QuizController::class, 'deleteQuiz'])->middleware('role:guru'); // Hapus quiz
+
+    Route::post('/upload-question-image', [QuizController::class, 'uploadImage'])->middleware('role:guru');
 });
 
 
@@ -126,6 +128,10 @@ Route::get('/students-by-class/{kelas}', [StudentController::class, 'getByClass'
 Route::get('/attendance-records/session/{sessionId}', [AttendanceRecordController::class, 'getAbsensiBySession']);
 Route::post('/attendance/check-code', [AttendanceRecordController::class, 'checkKode']);
 Route::middleware(['auth:sanctum', 'role:siswa'])->post('/attendance-records/absen', [AttendanceRecordController::class, 'submitAbsen']);
+
+Route::middleware(['auth:sanctum', 'role:siswa'])->get('/student/attendance/status', [AttendanceRecordController::class, 'getStatusHariIni']);
+
+
 
 use App\Http\Controllers\TeacherController;
 

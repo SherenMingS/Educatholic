@@ -50,7 +50,7 @@ class _MateriDetailPageState extends State<MateriDetailPage> {
   }
 
   void _openModul(String filePath) {
-    final url = 'http://127.0.0.1:8000/storage/$filePath';
+    final url = '${ApiService.modulUrl}/storage/$filePath';
     if (kIsWeb) {
       html.window.open(url, '_blank');
     } else {

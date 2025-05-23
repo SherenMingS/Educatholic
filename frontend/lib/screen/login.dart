@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:frontend/services/api_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -51,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     final response = await http.post(
-      Uri.parse('http://127.0.0.1:8000/api/login'),
+      Uri.parse('${ApiService.baseUrl}/login'),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "email": _emailController.text,

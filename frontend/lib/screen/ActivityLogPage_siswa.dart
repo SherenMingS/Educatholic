@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:frontend/services/api_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/custom_appbar.dart';
@@ -37,7 +38,7 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
   Future<void> _fetchActivityLogs() async {
     try {
       final response = await http.get(
-        Uri.parse('http://127.0.0.1:8000/api/activity-logs'),
+        Uri.parse('${ApiService.baseUrl}/activity-logs'),
         headers: {'Authorization': 'Bearer $token'},
       );
 

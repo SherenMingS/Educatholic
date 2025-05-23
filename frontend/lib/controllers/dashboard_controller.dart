@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:frontend/services/api_service.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 
@@ -17,7 +18,7 @@ class DashboardController extends GetxController {
     try {
       isLoading(true);
       final response = await http.get(
-        Uri.parse("http://127.0.0.1:8000/api/dashboard-siswa"),
+        Uri.parse("${ApiService.baseUrl}/dashboard-siswa"),
         headers: {
           "Authorization": "Bearer $token",
           "Content-Type": "application/json",
@@ -47,7 +48,7 @@ class DashboardController extends GetxController {
     try {
       isLoading(true);
       final response = await http.get(
-        Uri.parse("http://127.0.0.1:8000/api/dashboard-guru"),
+        Uri.parse("${ApiService.baseUrl}/dashboard-guru"),
         headers: {
           "Authorization": "Bearer $token",
           "Content-Type": "application/json",
@@ -71,7 +72,7 @@ class DashboardController extends GetxController {
     try {
       final response = await http.get(
         Uri.parse(
-            'http://127.0.0.1:8000/api/attendance-sessions/last?kelas=$kelas'),
+            '${ApiService.baseUrl}/attendance-sessions/last?kelas=$kelas'),
         headers: {
           "Content-Type": "application/json",
         },
