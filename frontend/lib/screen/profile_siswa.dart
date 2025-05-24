@@ -235,7 +235,7 @@ class _ProfilePageState extends State<ProfilePage> {
               radius: 50,
               backgroundImage: profileData?['photo'] != null
                   ? NetworkImage(
-                      'http://localhost:8000/${profileData!['photo']}?v=${DateTime.now().millisecondsSinceEpoch}')
+                      'http://192.168.18.85:8000/${profileData!['photo']}?v=${DateTime.now().millisecondsSinceEpoch}')
                   : null,
               backgroundColor: Colors.blue,
               child: profileData?['photo'] == null

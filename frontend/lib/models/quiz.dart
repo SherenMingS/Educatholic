@@ -9,14 +9,13 @@ class Quiz {
   final List<Question> questions;
   final bool isCompleted;
   final bool isRead;
-
-  // ✅ Tambahan untuk retry kuis
   final int? kkm;
   int? maxAttempts;
 
-  // ✅ Tambahan baru: untuk tampilkan info status
+  // ✅ Tambahan baru
   double? lastScore;
   int? currentAttempts;
+  final String? semester; // ✅ Properti semester
 
   Quiz({
     required this.id,
@@ -31,10 +30,9 @@ class Quiz {
     required this.isRead,
     this.kkm,
     this.maxAttempts,
-
-    // ✅ Tambahan baru
     this.lastScore,
     this.currentAttempts,
+    this.semester, // ✅ Constructor
   });
 
   factory Quiz.fromJson(Map<String, dynamic> json) {
@@ -55,6 +53,7 @@ class Quiz {
       isRead: json['is_read'] ?? false,
       kkm: json['kkm'],
       maxAttempts: json['max_attempts'],
+      semester: json['semester'], // ✅ From JSON
     );
   }
 }
@@ -67,6 +66,7 @@ class Question {
   final String option3;
   final String option4;
   final String correctAnswer;
+  final String? image; // ✅ Tambahkan ini
 
   Question({
     required this.id,
@@ -76,6 +76,7 @@ class Question {
     required this.option3,
     required this.option4,
     required this.correctAnswer,
+    this.image, // ✅ Tambahkan ini juga
   });
 
   factory Question.fromJson(Map<String, dynamic> json) {
@@ -87,6 +88,7 @@ class Question {
       option3: json['option_3'],
       option4: json['option_4'],
       correctAnswer: json['correct_answer'],
+      image: json['image'], // ✅ Ambil dari JSON
     );
   }
 }

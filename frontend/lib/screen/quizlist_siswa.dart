@@ -19,6 +19,7 @@ class _StudentQuizListPageState extends State<StudentQuizListPage> {
   List<Quiz> quizzes = [];
   Map<int, bool> canRetryMap = {};
   String? token;
+  String selectedSemester = '1';
   bool isLoading = true;
   int _selectedIndex = 1;
 
@@ -42,7 +43,7 @@ class _StudentQuizListPageState extends State<StudentQuizListPage> {
 
   Future<void> _fetchQuizzes(String kelas) async {
     try {
-      final quizzesList = await ApiService.getQuizzesForStudents(token!, kelas);
+      final quizzesList = await ApiService.getQuizzesForStudents(token!, kelas, semester: selectedSemester);
       final retryMap = <int, bool>{};
 
       for (var quiz in quizzesList) {
@@ -52,13 +53,11 @@ class _StudentQuizListPageState extends State<StudentQuizListPage> {
           quiz.lastScore = result['last_score']?.toDouble();
           quiz.currentAttempts = result['current_attempts'];
           quiz.maxAttempts = result['max_attempts'];
-          print("📦 STATUS QUIZ ${quiz.id}: $result");
         } catch (e) {
           retryMap[quiz.id] = false;
           quiz.lastScore = null;
           quiz.currentAttempts = null;
           quiz.maxAttempts = quiz.maxAttempts ?? 1;
-          print("Quiz ${quiz.id} status error: $e");
         }
       }
 
@@ -111,17 +110,45 @@ class _StudentQuizListPageState extends State<StudentQuizListPage> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: isLoading
           ? Center(child: CircularProgressIndicator())
-          : quizzes.isEmpty
-              ? Center(child: Text('Belum ada kuis tersedia'))
-              : ListView.builder(
-                  padding: EdgeInsets.all(16),
-                  itemCount: quizzes.length,
-                  itemBuilder: (context, index) {
-                    final quiz = quizzes[index];
-                    final canRetry = canRetryMap[quiz.id] ?? false;
-                    return _buildQuizCard(quiz, canRetry: canRetry);
-                  },
+          : Column(
+              children: [
+                // 🔽 Filter semester
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      Text("Semester:", style: TextStyle(fontWeight: FontWeight.bold)),
+                      SizedBox(width: 12),
+                      DropdownButton<String>(
+                        value: selectedSemester,
+                        items: ['1', '2'].map((sem) {
+                          return DropdownMenuItem(value: sem, child: Text("Semester $sem"));
+                        }).toList(),
+                        onChanged: (val) {
+                          setState(() {
+                            selectedSemester = val!;
+                            _loadTokenAndFetchQuizzes(); // Fetch ulang
+                          });
+                        },
+                      ),
+                    ],
+                  ),
                 ),
+                Expanded(
+                  child: quizzes.isEmpty
+                      ? Center(child: Text('Belum ada kuis tersedia'))
+                      : ListView.builder(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: quizzes.length,
+                          itemBuilder: (context, index) {
+                            final quiz = quizzes[index];
+                            final canRetry = canRetryMap[quiz.id] ?? false;
+                            return _buildQuizCard(quiz, canRetry: canRetry);
+                          },
+                        ),
+                ),
+              ],
+            ),
     );
   }
 

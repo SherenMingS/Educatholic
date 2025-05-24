@@ -2,11 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'dart:io' show Platform;
+
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:html' as html;
+
 import '../widgets/custom_appbar.dart';
 import '../widgets/empty_bottombar.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+void _openUrl(String url) async {
+  final Uri uri = Uri.parse(url);
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } else {
+    throw 'Could not launch $url';
+  }
+}
 
 class MateriDetailPage extends StatefulWidget {
   final int materiId;
@@ -52,7 +62,6 @@ class _MateriDetailPageState extends State<MateriDetailPage> {
   void _openModul(String filePath) {
     final url = '${ApiService.modulUrl}/storage/$filePath';
     if (kIsWeb) {
-      html.window.open(url, '_blank');
     } else {
       launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     }

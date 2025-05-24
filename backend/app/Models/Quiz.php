@@ -12,6 +12,7 @@ class Quiz extends Model
     protected $fillable = [
     'title',
     'kelas',
+    'semester',
     'materi_id',
     'created_by',
     'duration',

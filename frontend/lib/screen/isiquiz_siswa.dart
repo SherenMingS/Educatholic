@@ -1,4 +1,4 @@
-// Full code with clickable arrow pagination for QuizPage
+// Full code with soal bergambar
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:frontend/services/api_service.dart';
@@ -152,10 +152,11 @@ class _QuizPageState extends State<QuizPage> {
         context,
         MaterialPageRoute(
           builder: (_) => HasilKuisPage(
+            quizId: widget.quizId,
             totalSoal: quizData!['questions'].length,
             jawabanBenar: result['correct_answers'],
-            skorTerbaru: (result['skor_terbaru'] ?? 0).toDouble(), // ✅ new
-            skorAkhir: (result['score'] ?? 0).toDouble(), // ✅ existing
+            skorTerbaru: (result['skor_terbaru'] ?? 0).toDouble(),
+            skorAkhir: (result['score'] ?? 0).toDouble(),
             jawabanSalah:
                 List<Map<String, dynamic>>.from(result['jawaban_salah']),
           ),
@@ -194,7 +195,6 @@ class _QuizPageState extends State<QuizPage> {
       ));
     }
 
-    // Tombol Prev
     items.add(IconButton(
       icon: Icon(Icons.chevron_left),
       onPressed: currentQuestionIndex > 0
@@ -222,7 +222,6 @@ class _QuizPageState extends State<QuizPage> {
       }
     }
 
-    // Tombol Next
     items.add(IconButton(
       icon: Icon(Icons.chevron_right),
       onPressed: currentQuestionIndex < total - 1
@@ -233,6 +232,7 @@ class _QuizPageState extends State<QuizPage> {
     return items;
   }
 
+  @override
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
@@ -270,23 +270,23 @@ class _QuizPageState extends State<QuizPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(children: [
-                            Icon(Icons.timer),
-                            SizedBox(width: 4),
-                            Text(_formatTime(_remainingSeconds),
-                                style: TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.bold))
-                          ]),
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children:
-                                  _buildEllipsisPagination(questions.length),
-                            ),
-                          )
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(children: [
+                          Icon(Icons.timer),
+                          SizedBox(width: 4),
+                          Text(_formatTime(_remainingSeconds),
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold))
                         ]),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                              children:
+                                  _buildEllipsisPagination(questions.length)),
+                        )
+                      ],
+                    ),
                     SizedBox(height: 10),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -315,77 +315,97 @@ class _QuizPageState extends State<QuizPage> {
                       ],
                     ),
                     SizedBox(height: 10),
-                    Text("Pertanyaan ${currentQuestionIndex + 1}",
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
-                    SizedBox(height: 10),
-                    Text(current['question'],
-                        style: TextStyle(
-                            fontSize: 20, fontWeight: FontWeight.bold)),
-                    SizedBox(height: 20),
+
+                    // ✅ Tampilan soal + gambar + opsi dalam scroll
                     Expanded(
                       child: ListView(
-                        children: List.generate(4, (i) {
-                          if (eliminated.contains(i)) return SizedBox.shrink();
-                          bool isSelected =
-                              selectedAnswers[currentQuestionIndex] ==
-                                  options[i];
-                          return Container(
-                            width: double.infinity,
-                            margin: EdgeInsets.only(bottom: 12),
-                            child: InkWell(
+                        children: [
+                          Text("Pertanyaan ${currentQuestionIndex + 1}",
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold)),
+                          SizedBox(height: 10),
+                          if (current['image'] != null &&
+                              current['image'].toString().isNotEmpty)
+                            ClipRRect(
                               borderRadius: BorderRadius.circular(12),
-                              onTap: () => setState(() =>
-                                  selectedAnswers[currentQuestionIndex] =
-                                      options[i]),
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                    vertical: 16, horizontal: 20),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? Colors.blue.shade50
-                                      : Colors.white,
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? Colors.blue
-                                        : Colors.grey.shade400,
-                                    width: 1.5,
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 14,
-                                      backgroundColor: isSelected
-                                          ? Colors.blue
-                                          : Colors.grey.shade300,
-                                      child: Text(
-                                        labels[i],
-                                        style: TextStyle(
-                                            color: Colors.white, fontSize: 14),
-                                      ),
-                                    ),
-                                    SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        options[i] ?? '-',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: isSelected
-                                              ? Colors.blue[900]
-                                              : Colors.black87,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                              child: Image.network(
+                                '${ApiService.modulUrl}/storage/${current['image']}',
+                                fit: BoxFit.contain,
+                                width: double.infinity,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Text('⚠️ Gagal memuat gambar'),
                               ),
                             ),
-                          );
-                        }),
+                          SizedBox(height: 12),
+                          Text(current['question'],
+                              style: TextStyle(
+                                  fontSize: 20, fontWeight: FontWeight.bold)),
+                          SizedBox(height: 20),
+                          ...List.generate(4, (i) {
+                            if (eliminated.contains(i))
+                              return SizedBox.shrink();
+                            bool isSelected =
+                                selectedAnswers[currentQuestionIndex] ==
+                                    options[i];
+                            return Container(
+                              width: double.infinity,
+                              margin: EdgeInsets.only(bottom: 12),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(12),
+                                onTap: () => setState(() =>
+                                    selectedAnswers[currentQuestionIndex] =
+                                        options[i]),
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                      vertical: 16, horizontal: 20),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? Colors.blue.shade50
+                                        : Colors.white,
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? Colors.blue
+                                          : Colors.grey.shade400,
+                                      width: 1.5,
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 14,
+                                        backgroundColor: isSelected
+                                            ? Colors.blue
+                                            : Colors.grey.shade300,
+                                        child: Text(
+                                          labels[i],
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 14),
+                                        ),
+                                      ),
+                                      SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          options[i] ?? '-',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            color: isSelected
+                                                ? Colors.blue[900]
+                                                : Colors.black87,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                        ],
                       ),
                     ),
+
                     SizedBox(height: 20),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,

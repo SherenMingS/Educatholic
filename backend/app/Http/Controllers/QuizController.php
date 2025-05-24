@@ -10,6 +10,9 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth; 
 use App\Models\MateriRead;
 use App\Models\QuizAnswer;
+use App\Models\QuizFeedback;
+
+
 
 class QuizController extends Controller
 {
@@ -19,6 +22,7 @@ class QuizController extends Controller
         $request->validate([
             'title' => 'required|string|max:255',
             'kelas' => 'required|string|max:10',
+            'semester' => 'required|string|in:1,2',
             'materi_id' => 'required|exists:materi,id',
             'duration' => 'nullable|integer|min:1',
             'deadline' => 'nullable|date',
@@ -31,12 +35,14 @@ class QuizController extends Controller
             'questions.*.option_3' => 'required|string',
             'questions.*.option_4' => 'required|string',
             'questions.*.correct_answer' => 'required|in:A,B,C,D',
-            'questions.*.image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'questions.*.image' => 'nullable|string|max:255',
+
         ]);
 
         $quiz = Quiz::create([
             'title' => $request->title,
             'kelas' => $request->kelas,
+            'semester' => $request->semester, 
             'materi_id' => $request->materi_id,
             'created_by' => auth()->user()->id,
             'duration' => $request->duration,
@@ -48,25 +54,28 @@ class QuizController extends Controller
 
         $scorePerQuestion = round(100 / count($request->questions), 2);
 
-        foreach ($request->questions as $index => $q) {
-            $imagePath = null;
+       foreach ($request->questions as $index => $q) {
+    $imagePath = null;
 
-            if ($request->hasFile("questions.$index.image")) {
-                $imagePath = $request->file("questions.$index.image")->store('soal', 'public');
-            }
+    // ✅ Cek apakah field 'image' berupa string path
+    if (!empty($q['image'])) {
+        $imagePath = $q['image'];  // karena dikirim dari Flutter sebagai string
+    }
 
-            QuizQuestion::create([
-                'quiz_id' => $quiz->id,
-                'question' => $q['question'],
-                'option_1' => $q['option_1'],
-                'option_2' => $q['option_2'],
-                'option_3' => $q['option_3'],
-                'option_4' => $q['option_4'],
-                'correct_answer' => $q['correct_answer'],
-                'score' => $scorePerQuestion,
-                'image' => $imagePath,
-            ]);
-        }
+    QuizQuestion::create([
+        'quiz_id' => $quiz->id,
+        'question' => $q['question'],
+        'option_1' => $q['option_1'],
+        'option_2' => $q['option_2'],
+        'option_3' => $q['option_3'],
+        'option_4' => $q['option_4'],
+        'correct_answer' => $q['correct_answer'],
+        'score' => $scorePerQuestion,
+        'image' => $imagePath,  // ✅ tetap simpan string path
+    ]);
+}
+\Log::info('📥 FULL REQUEST BODY', $request->all());
+
 
         return response()->json([
             'status' => 'success',
@@ -77,36 +86,65 @@ class QuizController extends Controller
 
     // ✅ GET ALL QUIZZES (GURU)
     public function getAllQuizzes(Request $request)
-    {
-        $kelasGuru = $request->query('kelas');
+{
+    $kelasGuru = $request->query('kelas');
+    $semester = $request->query('semester'); // ✅ ambil semester dari query
 
-        $quizzes = Quiz::where('created_by', auth()->user()->id)
-            ->when($kelasGuru, fn($q) => $q->where('kelas', $kelasGuru))
-            ->with('questions')
-            ->withCount('questions')
-            ->orderBy('created_at', 'desc')
-            ->get();
+    $quizzes = Quiz::where('created_by', auth()->user()->id)
+        ->when($kelasGuru, fn($q) => $q->where('kelas', $kelasGuru))
+        ->when($semester, fn($q) => $q->where('semester', $semester)) // ✅ tambahkan filter semester
+        ->with('questions')
+        ->withCount('questions')
+        ->orderBy('created_at', 'desc')
+        ->get();
 
-        return response()->json([
-            'status' => 'success',
-            'data' => $quizzes,
-        ]);
-    }
+    return response()->json([
+        'status' => 'success',
+        'data' => $quizzes,
+    ]);
+}
+
 
     // ✅ GET QUIZ DETAIL
     public function getQuizDetail($id)
-    {
-        $quiz = Quiz::with('questions')->find($id);
+{
+    $quiz = Quiz::with('questions')->find($id);
 
-        if (!$quiz) {
-            return response()->json(['message' => 'Quiz tidak ditemukan'], 404);
-        }
-
+    if (!$quiz) {
         return response()->json([
-            'status' => 'success',
-            'data' => $quiz,
-        ]);
+            'status' => 'error',
+            'message' => 'Quiz tidak ditemukan'
+        ], 404);
     }
+
+    return response()->json([
+        'status' => 'success',
+        'data' => [
+            'id' => $quiz->id,
+            'title' => $quiz->title,
+            'kelas' => $quiz->kelas,
+            'semester' => $quiz->semester,
+            'materi_id' => $quiz->materi_id,
+            'duration' => $quiz->duration,
+            'deadline' => $quiz->deadline,
+            'kkm' => $quiz->kkm,
+            'max_attempts' => $quiz->max_attempts,
+            'questions' => $quiz->questions->map(function ($q) {
+                return [
+                    'id' => $q->id,
+                    'question' => $q->question,
+                    'option_1' => $q->option_1,
+                    'option_2' => $q->option_2,
+                    'option_3' => $q->option_3,
+                    'option_4' => $q->option_4,
+                    'correct_answer' => $q->correct_answer,
+                    'image' => $q->image, // ✅ ini sesuai dengan database-mu
+                ];
+            }),
+        ]
+    ]);
+}
+
 
     // ✅ GET QUIZ FOR STUDENTS BY KELAS
     // public function getQuizzesForStudents(Request $request)
@@ -124,12 +162,15 @@ class QuizController extends Controller
     //     ]);
     // }
 
-    public function getQuizzesForStudents(Request $request)
+   public function getQuizzesForStudents(Request $request)
 {
     $kelas = $request->query('kelas');
     $userId = Auth::id();
 
     $quizzes = Quiz::where('kelas', $kelas)
+        ->when($request->has('semester'), function ($query) use ($request) {
+            $query->where('semester', $request->semester);
+        })
         ->withCount('questions')
         ->orderBy('created_at', 'desc')
         ->get();
@@ -148,6 +189,7 @@ class QuizController extends Controller
         'data' => $quizzes,
     ]);
 }
+
 
     // ✅ GET QUIZ FOR STUDENT BY ID
     public function getQuizForStudent($id)
@@ -294,6 +336,7 @@ class QuizController extends Controller
         'questions.*.option_4' => 'required|string',
         'questions.*.correct_answer' => 'required|in:A,B,C,D',
         'questions.*.score' => 'required|numeric',
+        'questions.*.image' => 'nullable|string|max:255',
     ]);
 
     $quiz = Quiz::where('id', $id)->where('created_by', auth()->user()->id)->first();
@@ -315,21 +358,22 @@ class QuizController extends Controller
     if ($request->has('questions')) {
         $quiz->questions()->delete();
 
-        foreach ($request->questions as $q) {
-            $imagePath = $q['image'] ?? null; // opsional
+       foreach ($request->questions as $q) {
+    $imagePath = !empty($q['image']) ? $q['image'] : null;
 
-            QuizQuestion::create([
-                'quiz_id' => $quiz->id,
-                'question' => $q['question'],
-                'option_1' => $q['option_1'],
-                'option_2' => $q['option_2'],
-                'option_3' => $q['option_3'],
-                'option_4' => $q['option_4'],
-                'correct_answer' => $q['correct_answer'],
-                'score' => $q['score'],
-                'image' => $imagePath,
-            ]);
-        }
+    QuizQuestion::create([
+        'quiz_id' => $quiz->id,
+        'question' => $q['question'],
+        'option_1' => $q['option_1'],
+        'option_2' => $q['option_2'],
+        'option_3' => $q['option_3'],
+        'option_4' => $q['option_4'],
+        'correct_answer' => $q['correct_answer'],
+        'score' => $q['score'],
+        'image' => $imagePath, // ✅ fix: null kalau kosong
+    ]);
+}
+
     }
 
     return response()->json([
@@ -356,6 +400,19 @@ class QuizController extends Controller
             'message' => 'Quiz berhasil dihapus',
         ]);
     }
+    public function uploadQuestionImage(Request $request)
+{
+    $request->validate([
+        'image' => 'required|image|mimes:jpg,jpeg,png|max:2048',
+    ]);
+
+    $path = $request->file('image')->store('soal', 'public');
+
+    return response()->json([
+        'url' => $path, // ✅ contoh: soal/abc123.jpg
+    ]);
+}
+
 
     public function uploadImage(Request $request)
 {
@@ -367,6 +424,42 @@ class QuizController extends Controller
 
     return response()->json([
         'url' => $path  // contoh: soal/abc123.jpg
+    ]);
+}
+
+public function storeFeedback(Request $request)
+{
+    $request->validate([
+        'quiz_id' => 'required|exists:quizzes,id',
+        'rating' => 'required|integer|min:1|max:5',
+        'comment' => 'nullable|string'
+    ]);
+
+    $userId = Auth::id();
+
+    // Cek apakah sudah pernah kasih feedback untuk kuis ini
+    $existing = QuizFeedback::where('quiz_id', $request->quiz_id)
+                            ->where('user_id', $userId)
+                            ->first();
+
+    if ($existing) {
+        return response()->json([
+            'message' => 'Kamu sudah memberikan feedback sebelumnya',
+            'status' => 'duplicate'
+        ], 409);
+    }
+
+    // Simpan feedback
+    QuizFeedback::create([
+        'quiz_id' => $request->quiz_id,
+        'user_id' => $userId,
+        'rating' => $request->rating,
+        'comment' => $request->comment,
+    ]);
+
+    return response()->json([
+        'message' => 'Feedback berhasil disimpan',
+        'status' => 'success'
     ]);
 }
 

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/screen/dashboard_siswa.dart';
+import '../services/api_service.dart'; // pastikan import ApiService
 
 class HasilKuisPage extends StatelessWidget {
+  final int quizId;
   final int totalSoal;
   final int jawabanBenar;
   final double skorTerbaru;
@@ -10,6 +12,7 @@ class HasilKuisPage extends StatelessWidget {
 
   const HasilKuisPage({
     Key? key,
+    required this.quizId,
     required this.totalSoal,
     required this.jawabanBenar,
     required this.skorTerbaru,
@@ -25,6 +28,74 @@ class HasilKuisPage extends StatelessWidget {
     } else {
       return "💪 Jangan menyerah, terus semangat belajar ya!";
     }
+  }
+
+  void showFeedbackDialog(BuildContext context) {
+    int selectedRating = 0;
+    TextEditingController commentController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text("Beri Feedback"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("Seberapa puas kamu dengan kuis ini?"),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  return IconButton(
+                    icon: Icon(
+                      index < selectedRating ? Icons.star : Icons.star_border,
+                      color: Colors.amber,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        selectedRating = index + 1;
+                      });
+                    },
+                  );
+                }),
+              ),
+              TextField(
+                controller: commentController,
+                decoration: InputDecoration(labelText: "Komentar (opsional)"),
+                maxLines: 3,
+              )
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("Batal"),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  await ApiService.submitQuizFeedback(
+                    quizId: quizId,
+                    rating: selectedRating,
+                    comment: commentController.text,
+                  );
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Terima kasih atas feedback-nya!")),
+                  );
+                } catch (e) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Gagal mengirim feedback")),
+                  );
+                }
+              },
+              child: Text("Kirim"),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -84,8 +155,7 @@ class HasilKuisPage extends StatelessWidget {
                       ),
                       SizedBox(height: 10),
                       Text("Benar: $jawabanBenar dari $totalSoal"),
-                      Text(
-                          "Skor Attempt Ini: ${skorTerbaru.toStringAsFixed(1)}"),
+                      Text("Skor Attempt Ini: ${skorTerbaru.toStringAsFixed(1)}"),
                       Text("Skor Akhir: ${skorAkhir.toStringAsFixed(1)}"),
                     ],
                   ),
@@ -132,20 +202,15 @@ class HasilKuisPage extends StatelessWidget {
                                 return Padding(
                                   padding: const EdgeInsets.only(bottom: 12.0),
                                   child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text("❓ ${item['pertanyaan']}",
-                                          style: TextStyle(
-                                              fontWeight: FontWeight.bold)),
+                                          style: TextStyle(fontWeight: FontWeight.bold)),
                                       SizedBox(height: 4),
-                                      Text(
-                                          "Jawaban Kamu: ${item['jawabanUser']}",
+                                      Text("Jawaban Kamu: ${item['jawabanUser']}",
                                           style: TextStyle(color: Colors.red)),
-                                      Text(
-                                          "Jawaban Benar: ${item['jawabanBenar']}",
-                                          style:
-                                              TextStyle(color: Colors.green)),
+                                      Text("Jawaban Benar: ${item['jawabanBenar']}",
+                                          style: TextStyle(color: Colors.green)),
                                       Divider(),
                                     ],
                                   ),
@@ -163,17 +228,30 @@ class HasilKuisPage extends StatelessWidget {
                       );
                     },
                     icon: Icon(Icons.visibility, color: Colors.white),
-                    label: Text("Lihat Pembahasan",
-                        style: TextStyle(color: Colors.white)),
+                    label: Text("Lihat Pembahasan", style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.indigo,
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
                     ),
                   ),
+                SizedBox(height: 20),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    showFeedbackDialog(context);
+                  },
+                  icon: Icon(Icons.rate_review, color: Colors.white),
+                  label: Text("Beri Feedback Kuis", style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

@@ -5,12 +5,15 @@ class CustomPageAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final VoidCallback? onBack;
   final bool showBack;
+  final List<Widget>?
+      actions; // ✅ Tambahan baru untuk mendukung tombol kanan atas
 
   const CustomPageAppBar({
     required this.icon,
     required this.title,
     this.onBack,
-    this.showBack = true, // ✅ default tetap true, aman untuk halaman lain
+    this.showBack = true,
+    this.actions, // ✅ Tambahan baru
     super.key,
   });
 
@@ -46,7 +49,7 @@ class CustomPageAppBar extends StatelessWidget implements PreferredSizeWidget {
                 ),
               ),
             )
-          : null, // ✅ Jika false, tidak menampilkan leading
+          : null, // ✅ Jika false, tidak menampilkan tombol back
       title: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -62,6 +65,7 @@ class CustomPageAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
         ],
       ),
+      actions: actions, // ✅ Tambahan baru untuk mendukung tombol kanan
     );
   }
 }

@@ -1,5 +1,3 @@
-// Versi lengkap AddQuizPage dengan input KKM & Max Attempts
-
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
@@ -25,11 +23,12 @@ class _AddQuizPageState extends State<AddQuizPage> {
   TextEditingController kkmController = TextEditingController(text: "75");
   TextEditingController attemptController = TextEditingController(text: "2");
   String? selectedClass;
+  String? selectedSemester = '1'; // ✅ default semester 1
+  String? selectedMateriId;
   String? token;
   DateTime? selectedDeadline;
   List<Map<String, dynamic>> questionControllers = [];
   List<Map<String, dynamic>> materiList = [];
-  String? selectedMateriId;
 
   @override
   void initState() {
@@ -159,6 +158,7 @@ class _AddQuizPageState extends State<AddQuizPage> {
       request.headers['Authorization'] = 'Bearer $token';
       request.fields['title'] = titleController.text;
       request.fields['kelas'] = selectedClass!;
+      request.fields['semester'] = selectedSemester!; // ✅ kirim semester
       request.fields['materi_id'] = selectedMateriId!;
       request.fields['duration'] =
           (int.tryParse(durationController.text) ?? 30).toString();
@@ -182,6 +182,8 @@ class _AddQuizPageState extends State<AddQuizPage> {
         if (q["imageUrl"] != null) {
           request.fields['$prefix[image]'] = q["imageUrl"];
         }
+        print("Mengirim ke: ${ApiService.baseUrl}/quizzes");
+        print("Kelas: $selectedClass, Token: $token");
       }
 
       final streamedResponse = await request.send();
@@ -286,6 +288,23 @@ class _AddQuizPageState extends State<AddQuizPage> {
               _buildFormField(
                   "Kelas", TextEditingController(text: selectedClass ?? ""),
                   readOnly: true),
+              // ✅ Semester Dropdown
+              DropdownButtonFormField<String>(
+                value: selectedSemester,
+                decoration: InputDecoration(
+                  labelText: "Semester",
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                items: ['1', '2'].map((sem) {
+                  return DropdownMenuItem(
+                      value: sem, child: Text("Semester $sem"));
+                }).toList(),
+                onChanged: (val) => setState(() => selectedSemester = val),
+                validator: (val) =>
+                    val == null ? "Semester harus dipilih" : null,
+              ),
+              SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: selectedMateriId,
                 decoration: InputDecoration(

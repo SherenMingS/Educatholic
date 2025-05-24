@@ -81,6 +81,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/quizzes/{id}', [QuizController::class, 'deleteQuiz'])->middleware('role:guru'); // Hapus quiz
 
     Route::post('/upload-question-image', [QuizController::class, 'uploadImage'])->middleware('role:guru');
+    Route::post('/upload-question-image', [QuizController::class, 'uploadQuestionImage'])->middleware('role:guru');
+
 });
 
 
@@ -224,3 +226,5 @@ use App\Http\Controllers\QuizResultController;
 Route::middleware('auth:sanctum')->get('/check-quiz-attempted/{quizId}', [QuizResultController::class, 'checkIfAttempted']);
 
 Route::get('/attendance-sessions/last', [AttendanceSessionController::class, 'getLastSessionByKelas']);
+
+Route::middleware('auth:sanctum')->post('/quiz/feedback', [QuizController::class, 'storeFeedback']);

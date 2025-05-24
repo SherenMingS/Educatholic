@@ -3,14 +3,15 @@ import 'package:http/http.dart' as http;
 import '../models/student.dart';
 import '../models/quiz.dart';
 import '../models/leaderboard.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   // Ganti dengan URL backend-mu
-  // static const String baseUrl = 'http://10.61.138.94:8000/api';
-  static const String baseUrl = 'http://127.0.0.1:8000/api';
+  static const String baseUrl = 'http://192.168.18.85:8000/api';
+  // static const String baseUrl = 'http://127.0.0.1:8000/api';
 
-  // static const String modulUrl = 'http://10.61.138.94:8000';
-  static const String modulUrl = 'http://127.0.0.1:8000';
+  static const String modulUrl = 'http://192.168.18.85:8000';
+  // static const String modulUrl = 'http://127.0.0.1:8000';
 
   static Future<List<Student>> getStudents(String kelas, String token) async {
     final response = await http.get(
@@ -30,14 +31,20 @@ class ApiService {
   }
 
   // API untuk mengambil daftar kuis
-  static Future<List<Quiz>> getQuizzes(String token, String kelas) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/quizzes?kelas=$kelas'), // Kirim kelas ke API
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Accept': 'application/json',
-      },
-    );
+  static Future<List<Quiz>> getQuizzes(String token, String kelas,
+      {String? semester}) async {
+    final queryParams = {
+      'kelas': kelas,
+      if (semester != null) 'semester': semester,
+    };
+
+    final uri =
+        Uri.parse('$baseUrl/quizzes').replace(queryParameters: queryParams);
+
+    final response = await http.get(uri, headers: {
+      'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+    });
 
     if (response.statusCode == 200) {
       List<dynamic> data = jsonDecode(response.body)['data'];
@@ -115,14 +122,22 @@ class ApiService {
   }
 
 //student get quiz
-  static Future<List<Quiz>> getQuizzesForStudents(
-      String token, String? kelas) async {
+  static Future<List<Quiz>> getQuizzesForStudents(String token, String? kelas,
+      {String? semester}) async {
     if (kelas == null || kelas.isEmpty) {
       throw Exception("⚠️ Gagal mengambil kuis: kelas tidak valid!");
     }
 
+    final queryParams = {
+      'kelas': kelas,
+      if (semester != null) 'semester': semester,
+    };
+
+    final uri = Uri.parse('$baseUrl/quizzes/student')
+        .replace(queryParameters: queryParams);
+
     final response = await http.get(
-      Uri.parse('$baseUrl/quizzes/student?kelas=$kelas'), // Kirim kelas ke API
+      uri,
       headers: {
         'Authorization': 'Bearer $token',
         'Accept': 'application/json',
@@ -240,12 +255,13 @@ class ApiService {
     final response = await http.get(
       Uri.parse("$baseUrl/user/profile"),
       headers: {
-        'Authorization': 'Bearer $token', // Pastikan token disertakan
+        'Authorization': 'Bearer $token',
       },
     );
 
     if (response.statusCode == 200) {
-      return json.decode(response.body);
+      final jsonResponse = json.decode(response.body);
+      return jsonResponse['data']; // ✅ ambil isi "data"
     } else {
       throw Exception("Gagal mengambil data profil");
     }
@@ -344,5 +360,42 @@ class ApiService {
     } else {
       throw Exception("Gagal memeriksa status kuis");
     }
+  }
+
+  // Fungsi untuk submit feedback kuis
+  static Future<void> submitQuizFeedback({
+    required int quizId,
+    required int rating,
+    String? comment,
+  }) async {
+    final token = await getToken();
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/quiz/feedback'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({
+        'quiz_id': quizId,
+        'rating': rating,
+        'comment': comment,
+      }),
+    );
+
+    print("Submit Feedback Status: ${response.statusCode}");
+    print("Submit Feedback Body: ${response.body}");
+
+    if (response.statusCode != 200) {
+      throw Exception("Gagal mengirim feedback kuis");
+    }
+  }
+
+  static Future<String> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (token == null) throw Exception("Token tidak ditemukan!");
+    return token;
   }
 }

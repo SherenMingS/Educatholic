@@ -194,6 +194,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           }
 
           List<LeaderboardModel> leaderboard = snapshot.data!;
+          leaderboard.sort((a, b) => b.totalScore
+              .compareTo(a.totalScore)); // ✅ Sortir dari tinggi ke rendah
 
           return ListView.builder(
             padding: const EdgeInsets.all(16),

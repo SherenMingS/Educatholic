@@ -1,17 +1,27 @@
 <?php
+use Illuminate\Http\Request; // ✅ Bukan Facade
+use App\Exports\NilaiExport;
+use Maatwebsite\Excel\Facades\Excel;
 
-use Illuminate\Support\Facades\Route;
+Route::get('/export-nilai', function (Request $request) {
+    try {
+        $kelas = $request->get('kelas');
+        $semester = $request->get('semester');
 
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "web" middleware group. Make something great!
-|
-*/
+        return Excel::download(
+            new \App\Exports\NilaiExport($kelas, $semester),
+            "nilai_{$kelas}_semester_{$semester}.xlsx"
+        );
+    } catch (\Throwable $e) {
+        return response()->json([
+            'message' => 'Export error',
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ], 500);
+    }
+});
+
+
 
 Route::get('/', function () {
     return view('welcome');

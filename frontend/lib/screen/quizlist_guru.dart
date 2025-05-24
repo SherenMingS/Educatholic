@@ -16,6 +16,7 @@ class _QuizListPageState extends State<QuizListPage> {
   List<Quiz> quizzes = [];
   String? token;
   String? selectedClass;
+  String selectedSemester = '1'; // default semester
   bool isLoading = true;
 
   @override
@@ -42,7 +43,11 @@ class _QuizListPageState extends State<QuizListPage> {
     setState(() => isLoading = true);
 
     try {
-      final quizzesList = await ApiService.getQuizzes(token!, selectedClass!);
+      final quizzesList = await ApiService.getQuizzes(
+        token!,
+        selectedClass!,
+        semester: selectedSemester,
+      );
       setState(() {
         quizzes = quizzesList;
         isLoading = false;
@@ -97,85 +102,113 @@ class _QuizListPageState extends State<QuizListPage> {
         title: 'Daftar Kuis (${selectedClass ?? "Loading..."})',
       ),
       bottomNavigationBar: const EmptyBottomBar(),
-      body: isLoading
-          ? Center(child: CircularProgressIndicator())
-          : quizzes.isEmpty
-              ? Center(child: Text('Belum ada kuis untuk kelas $selectedClass'))
-              : ListView.builder(
-                  padding: EdgeInsets.all(16),
-                  itemCount: quizzes.length,
-                  itemBuilder: (context, index) {
-                    final quiz = quizzes[index];
-                    return Card(
-                      margin: EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      elevation: 3,
-                      child: ListTile(
-                        contentPadding: EdgeInsets.all(16),
-                        leading: Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade100,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(Icons.assignment, color: Colors.blue),
-                        ),
-                        title: Text(
-                          quiz.title,
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(height: 5),
-                            Text(
-                              "Kelas: ${quiz.kelas} | ${quiz.questionCount} Soal",
-                              style: TextStyle(
-                                  fontSize: 14, color: Colors.black54),
-                            ),
-                            SizedBox(height: 5),
-                            Text(
-                              "Durasi: ${quiz.duration} Menit",
-                              style: TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.w500),
-                            ),
-                            if (quiz.deadline != null)
-                              Text(
-                                "Deadline: ${quiz.deadline}",
-                                style:
-                                    TextStyle(fontSize: 14, color: Colors.red),
-                              ),
-                          ],
-                        ),
-                        trailing: Wrap(
-                          spacing: 10,
-                          children: [
-                            IconButton(
-                              icon: Icon(Icons.edit, color: Colors.blue),
-                              onPressed: () async {
-                                final result = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) =>
-                                          EditQuizPage(quiz: quiz)),
-                                );
-                                if (result == true) _fetchQuizzes();
-                              },
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _deleteQuiz(quiz.id),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
+      body: Column(
+        children: [
+          // 🔽 Dropdown Filter Semester
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+            child: Row(
+              children: [
+                Text("Semester:", style: TextStyle(fontWeight: FontWeight.bold)),
+                SizedBox(width: 12),
+                DropdownButton<String>(
+                  value: selectedSemester,
+                  items: ['1', '2'].map((sem) {
+                    return DropdownMenuItem(value: sem, child: Text("Semester $sem"));
+                  }).toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      selectedSemester = val!;
+                    });
+                    _fetchQuizzes();
                   },
                 ),
+              ],
+            ),
+          ),
+
+          Expanded(
+            child: isLoading
+                ? Center(child: CircularProgressIndicator())
+                : quizzes.isEmpty
+                    ? Center(child: Text('Belum ada kuis untuk kelas $selectedClass'))
+                    : ListView.builder(
+                        padding: EdgeInsets.all(16),
+                        itemCount: quizzes.length,
+                        itemBuilder: (context, index) {
+                          final quiz = quizzes[index];
+                          return Card(
+                            margin: EdgeInsets.symmetric(vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            elevation: 3,
+                            child: ListTile(
+                              contentPadding: EdgeInsets.all(16),
+                              leading: Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade100,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(Icons.assignment, color: Colors.blue),
+                              ),
+                              title: Text(
+                                quiz.title,
+                                style: TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SizedBox(height: 5),
+                                  Text(
+                                    "Kelas: ${quiz.kelas} | Semester: ${quiz.semester ?? '-'} | ${quiz.questionCount} Soal",
+                                    style: TextStyle(fontSize: 14, color: Colors.black54),
+                                  ),
+                                  SizedBox(height: 5),
+                                  Text(
+                                    "Durasi: ${quiz.duration} Menit",
+                                    style: TextStyle(
+                                        fontSize: 14, fontWeight: FontWeight.w500),
+                                  ),
+                                  if (quiz.deadline != null)
+                                    Text(
+                                      "Deadline: ${quiz.deadline}",
+                                      style:
+                                          TextStyle(fontSize: 14, color: Colors.red),
+                                    ),
+                                ],
+                              ),
+                              trailing: Wrap(
+                                spacing: 10,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.edit, color: Colors.blue),
+                                    onPressed: () async {
+                                      final result = await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) =>
+                                                EditQuizPage(quiz: quiz)),
+                                      );
+                                      if (result == true) _fetchQuizzes();
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () => _deleteQuiz(quiz.id),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final result = await Navigator.push(

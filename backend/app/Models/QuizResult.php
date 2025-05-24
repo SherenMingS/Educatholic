@@ -24,5 +24,10 @@ class QuizResult extends Model
         return $this->belongsTo(Quiz::class, 'quiz_id');  // Menghubungkan dengan tabel 'quiz' melalui 'quiz_id'
     }
 
+public function user()
+{
+    return $this->belongsTo(\App\Models\User::class, 'user_id');
+}
+
     
 }
