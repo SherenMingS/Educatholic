@@ -157,6 +157,7 @@ class HasilKuisPage extends StatelessWidget {
                       Text("Benar: $jawabanBenar dari $totalSoal"),
                       Text("Skor Attempt Ini: ${skorTerbaru.toStringAsFixed(1)}"),
                       Text("Skor Akhir: ${skorAkhir.toStringAsFixed(1)}"),
+                      
                     ],
                   ),
                 ),

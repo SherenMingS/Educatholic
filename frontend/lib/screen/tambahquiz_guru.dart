@@ -23,7 +23,7 @@ class _AddQuizPageState extends State<AddQuizPage> {
   TextEditingController kkmController = TextEditingController(text: "75");
   TextEditingController attemptController = TextEditingController(text: "2");
   String? selectedClass;
-  String? selectedSemester = '1'; // ✅ default semester 1
+  String? selectedSemester = '1';
   String? selectedMateriId;
   String? token;
   DateTime? selectedDeadline;
@@ -158,7 +158,7 @@ class _AddQuizPageState extends State<AddQuizPage> {
       request.headers['Authorization'] = 'Bearer $token';
       request.fields['title'] = titleController.text;
       request.fields['kelas'] = selectedClass!;
-      request.fields['semester'] = selectedSemester!; // ✅ kirim semester
+      request.fields['semester'] = selectedSemester!;
       request.fields['materi_id'] = selectedMateriId!;
       request.fields['duration'] =
           (int.tryParse(durationController.text) ?? 30).toString();
@@ -182,8 +182,6 @@ class _AddQuizPageState extends State<AddQuizPage> {
         if (q["imageUrl"] != null) {
           request.fields['$prefix[image]'] = q["imageUrl"];
         }
-        print("Mengirim ke: ${ApiService.baseUrl}/quizzes");
-        print("Kelas: $selectedClass, Token: $token");
       }
 
       final streamedResponse = await request.send();
@@ -250,17 +248,24 @@ class _AddQuizPageState extends State<AddQuizPage> {
                   setState(() => q["correct_answer"].text = val!),
             ),
             SizedBox(height: 10),
-            Row(children: [
-              ElevatedButton.icon(
-                onPressed: () => _pickImage(index),
-                icon: Icon(Icons.image),
-                label: Text("Upload Gambar"),
-              ),
-              SizedBox(width: 10),
-              if (q['imageUrl'] != null)
-                Image.network('${ApiService.modulUrl}/storage/' + q['imageUrl'],
-                    width: 100, height: 100, fit: BoxFit.cover)
-            ]),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () => _pickImage(index),
+                  icon: Icon(Icons.image),
+                  label: Text("Upload Gambar"),
+                ),
+                if (q['imageUrl'] != null)
+                  Image.network(
+                    '${ApiService.modulUrl}/storage/' + q['imageUrl'],
+                    width: 100,
+                    height: 100,
+                    fit: BoxFit.cover,
+                  ),
+              ],
+            ),
             SizedBox(height: 10),
             ElevatedButton(
               onPressed: () => _removeQuestion(index),
@@ -288,17 +293,20 @@ class _AddQuizPageState extends State<AddQuizPage> {
               _buildFormField(
                   "Kelas", TextEditingController(text: selectedClass ?? ""),
                   readOnly: true),
-              // ✅ Semester Dropdown
               DropdownButtonFormField<String>(
                 value: selectedSemester,
                 decoration: InputDecoration(
                   labelText: "Semester",
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 items: ['1', '2'].map((sem) {
                   return DropdownMenuItem(
-                      value: sem, child: Text("Semester $sem"));
+                    value: sem,
+                    child:
+                        Text("Semester $sem", overflow: TextOverflow.ellipsis),
+                  );
                 }).toList(),
                 onChanged: (val) => setState(() => selectedSemester = val),
                 validator: (val) =>
@@ -315,7 +323,14 @@ class _AddQuizPageState extends State<AddQuizPage> {
                 items: materiList.map((materi) {
                   return DropdownMenuItem(
                     value: materi['id'].toString(),
-                    child: Text(materi['judul']),
+                    child: Container(
+                      width: MediaQuery.of(context).size.width * 0.7,
+                      child: Text(
+                        materi['judul'],
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
                   );
                 }).toList(),
                 onChanged: (val) => setState(() => selectedMateriId = val),
@@ -340,12 +355,14 @@ class _AddQuizPageState extends State<AddQuizPage> {
               ElevatedButton(
                   onPressed: _addQuestion, child: Text("Tambah Soal")),
               SizedBox(height: 20),
-              ElevatedButton(
+                ElevatedButton(
                 onPressed: _submitQuiz,
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
-                    padding: EdgeInsets.symmetric(vertical: 12)),
-                child: Text("Simpan Kuis"),
+                  backgroundColor: Colors.teal,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                child: const Text("Simpan Kuis"),
               ),
             ],
           ),

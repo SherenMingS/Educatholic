@@ -235,7 +235,7 @@ class _ProfilePageState extends State<ProfilePage> {
               radius: 50,
               backgroundImage: profileData?['photo'] != null
                   ? NetworkImage(
-                      'http://192.168.18.85:8000/${profileData!['photo']}?v=${DateTime.now().millisecondsSinceEpoch}')
+                      '${ApiService.modulUrl}/${profileData!['photo']}?v=${DateTime.now().millisecondsSinceEpoch}')
                   : null,
               backgroundColor: Colors.blue,
               child: profileData?['photo'] == null
@@ -295,7 +295,11 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text("Profil Saya"),
+        title: const Text(
+          "Profil Saya",
+          style: TextStyle(color: Colors.white),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
         backgroundColor: Colors.blue,
         centerTitle: true,
       ),

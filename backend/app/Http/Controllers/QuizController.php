@@ -247,15 +247,15 @@ class QuizController extends Controller
         }
     }
 
-    // ✅ Hitung skor attempt sekarang
+    // ✅ Hitung skor dari attempt ini saja (bukan rata-rata)
     $currentScore = round(($correct / $total) * 100, 2);
 
-    // ✅ Total skor semua attempt (lama + sekarang)
+    // ✅ Hitung skor rata-rata (untuk dikembalikan ke frontend)
     $totalScore = $attempts->sum('score') + $currentScore;
     $totalAttempts = $attempts->count() + 1;
     $finalScore = round($totalScore / $totalAttempts, 2);
 
-    // ✅ Simpan jawaban
+    // ✅ Simpan semua jawaban siswa
     foreach ($request->answers as $answer) {
         $question = QuizQuestion::find($answer['question_id']);
         $isCorrect = $question && $question->correct_answer === $answer['selected_answer'];
@@ -269,11 +269,11 @@ class QuizController extends Controller
         ]);
     }
 
-    // ✅ Simpan hasil attempt ke-N
+    // ✅ Simpan hasil kuis ke DB dengan skor dari attempt ini
     QuizResult::create([
         'user_id' => $userId,
         'quiz_id' => $id,
-        'score' => $finalScore, // <- ✅ hasil final rata-rata
+        'score' => $currentScore, // ✅ Fix: gunakan skor terbaru
         'correct_answers' => $correct,
         'total_questions' => $total,
     ]);
@@ -304,16 +304,18 @@ class QuizController extends Controller
             ];
         });
 
-   return response()->json([
-    'status' => 'success',
-    'message' => 'Jawaban berhasil disimpan!',
-    'score' => $finalScore, // skor akhir (rerata)
-    'skor_terbaru' => $currentScore, // ✅ tambahkan ini!
-    'correct_answers' => $correct,
-    'total_questions' => $total,
-    'jawaban_salah' => $jawabanSalah
-]);
+    // ✅ Kirim ke Flutter: skor attempt ini + skor akhir (rata-rata)
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Jawaban berhasil disimpan!',
+        'score' => $finalScore,         // 🟢 Rata-rata skor semua attempt
+        'skor_terbaru' => $currentScore, // 🟢 Skor attempt saat ini
+        'correct_answers' => $correct,
+        'total_questions' => $total,
+        'jawaban_salah' => $jawabanSalah
+    ]);
 }
+
 
 
 

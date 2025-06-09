@@ -169,8 +169,14 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(kelas.isNotEmpty ? 'Leaderboard $kelas' : 'Leaderboard'),
+        title: Center(
+          child: Text(
+        kelas.isNotEmpty ? 'Leaderboard $kelas' : 'Leaderboard',
+        style: const TextStyle(color: Colors.white),
+          ),
+        ),
         backgroundColor: Colors.blueAccent,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: FutureBuilder<List<LeaderboardModel>>(
         future: leaderboardFuture,

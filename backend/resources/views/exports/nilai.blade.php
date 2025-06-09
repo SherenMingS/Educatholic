@@ -12,20 +12,29 @@
             @php
                 $first = $attempts->first();
                 $user = $first?->user;
-                $total = $attempts->sum('score');
-                $avg = $attempts->avg('score');
+
+                $perQuiz = $attempts->groupBy('quiz_id'); // ✅ group berdasarkan quiz
+
+                $total = 0;
+                foreach ($perQuiz as $quizAttempts) {
+                    $total += $quizAttempts->avg('score'); // ✅ rata-rata tiap kuis
+                }
+
+                $quizCount = $perQuiz->count();
+                $avg = $quizCount > 0 ? round($total / $quizCount, 2) : 0;
             @endphp
+
             @if ($user)
                 <tr>
                     <td>{{ $user->name }}</td>
                     <td>{{ $user->kelas }}</td>
                     <td>{{ round($total, 2) }}</td>
-                    <td>{{ round($avg, 2) }}</td>
+                    <td>{{ $avg }}</td>
                 </tr>
             @endif
         @empty
             <tr>
-                <td colspan="4" style="text-align:center">Tidak ada data</td>
+                <td colspan="4" style="text-align: center">Tidak ada data</td>
             </tr>
         @endforelse
     </tbody>

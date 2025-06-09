@@ -123,7 +123,7 @@ class _ManageAbsensiPageState extends State<ManageAbsensiPage> {
     return Scaffold(
       appBar: CustomPageAppBar(
         icon: Icons.check_circle,
-        title: 'Absensi ${widget.kelas}',
+        title: 'Presensi ${widget.kelas}',
       ),
       bottomNavigationBar: const EmptyBottomBar(),
       body: loading

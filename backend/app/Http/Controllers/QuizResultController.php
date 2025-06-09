@@ -64,17 +64,23 @@ class QuizResultController extends Controller
 
     $userId = Auth::id();
 
-    // Simpan hasil kuis
+    // Simpan attempt baru tanpa menghitung rata-rata
     $quizResult = QuizResult::create([
         'user_id' => $userId,
         'quiz_id' => $validated['quiz_id'],
-        'score' => $validated['score'],
+        'score' => $validated['score'], // langsung nilai 100
         'correct_answers' => $validated['correct_answers'],
         'total_questions' => $validated['total_questions'],
     ]);
 
-    return response()->json(['status' => 'success', 'message' => 'Hasil kuis disimpan', 'data' => $quizResult], 201);
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Hasil kuis disimpan',
+        'data' => $quizResult,
+    ], 201);
 }
+
+
 
 // File: app/Models/QuizResult.php
 
