@@ -5,7 +5,6 @@ import '../services/api_service.dart';
 import '../widgets/custom_appbar.dart';
 import '../widgets/empty_bottombar.dart';
 import 'package:dio/dio.dart';
-import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path/path.dart' as p;
@@ -34,6 +33,46 @@ class _TeacherLeaderboardScreenState extends State<TeacherLeaderboardScreen> {
     super.initState();
     leaderboardFuture =
         ApiService.getTeacherLeaderboard(widget.kelas, widget.token);
+  }
+
+  // 🔧 Fungsi bantu untuk sort nama dengan aman
+  String cleanName(String? name) {
+    if (name == null) return '';
+    return name
+        .replaceAll(RegExp(r'[^\x20-\x7E]'), '') // hapus karakter tersembunyi
+        .replaceAll(RegExp(r'\s+'), ' ') // spasi lebih dari satu
+        .trim()
+        .toLowerCase(); // lowercase
+  }
+
+  Future<void> _exportToExcel(BuildContext context) async {
+    final dio = Dio();
+    final url =
+        "${ApiService.modulUrl}/export-nilai?kelas=${widget.kelas}&semester=$selectedSemester";
+
+    try {
+      var status = await Permission.storage.request();
+      if (!status.isGranted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Izin akses penyimpanan ditolak")),
+        );
+        return;
+      }
+
+      final downloadsDir = Directory('/storage/emulated/0/Download');
+      final fileName = "nilai_${widget.kelas}_semester_$selectedSemester.xlsx";
+      final filePath = p.join(downloadsDir.path, fileName);
+
+      final response = await dio.download(url, filePath);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("✅ Berhasil diunduh ke: $filePath")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("❌ Gagal mengunduh file: $e")),
+      );
+    }
   }
 
   void _showExportBottomSheet() {
@@ -86,39 +125,6 @@ class _TeacherLeaderboardScreenState extends State<TeacherLeaderboardScreen> {
     );
   }
 
-  Future<void> _exportToExcel(BuildContext context) async {
-    final dio = Dio();
-    final url =
-        "${ApiService.modulUrl}/export-nilai?kelas=${widget.kelas}&semester=$selectedSemester";
-
-    try {
-      // 1. Minta izin
-      var status = await Permission.storage.request();
-      if (!status.isGranted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Izin akses penyimpanan ditolak")),
-        );
-        return;
-      }
-
-      // 2. Simpan ke folder Download
-      final downloadsDir = Directory('/storage/emulated/0/Download');
-      final fileName = "nilai_${widget.kelas}_semester_$selectedSemester.xlsx";
-      final filePath = p.join(downloadsDir.path, fileName);
-
-      final response = await dio.download(url, filePath);
-
-      // 3. Tampilkan notifikasi berhasil
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("✅ Berhasil diunduh ke: $filePath")),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("❌ Gagal mengunduh file: $e")),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -145,10 +151,16 @@ class _TeacherLeaderboardScreenState extends State<TeacherLeaderboardScreen> {
             return Center(child: Text('Tidak ada data leaderboard'));
           }
 
+          // ✅ Urutkan berdasarkan nama (sudah dibersihkan)
+          final sortedData = snapshot.data!
+            ..sort(
+              (a, b) => cleanName(a.name).compareTo(cleanName(b.name)),
+            );
+
           return ListView.builder(
-            itemCount: snapshot.data!.length,
+            itemCount: sortedData.length,
             itemBuilder: (context, index) {
-              final student = snapshot.data![index];
+              final student = sortedData[index];
               return Card(
                 margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 shape: RoundedRectangleBorder(

@@ -54,6 +54,7 @@ dependencies:
   dropdown_search: ^5.0.6
   flutter_screenutil: ^5.5.4
   url_launcher: ^6.2.5
+  
 
 dev_dependencies:
   flutter_test:
@@ -84,6 +85,7 @@ flutter:
     - assets/dbsiswa.png
     - assets/splash1.png
     - assets/splash2.png
+    - assets/katolik.png
  
 
   # An image asset can refer to one or more resolution-specific "variants", see

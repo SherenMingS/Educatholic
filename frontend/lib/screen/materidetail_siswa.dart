@@ -5,7 +5,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 
-import '../widgets/custom_appbar.dart';
 import '../widgets/empty_bottombar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -90,9 +89,50 @@ class _MateriDetailPageState extends State<MateriDetailPage> {
     }
 
     return Scaffold(
-      appBar: CustomPageAppBar(
-        title: widget.materiJudul,
-        icon: Icons.book, // Provide an appropriate icon
+      appBar: AppBar(
+        backgroundColor: Colors.blue,
+        elevation: 0,
+        automaticallyImplyLeading: false, // Supaya kita pakai custom leading
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: InkWell(
+            onTap: () => Navigator.pop(context),
+            borderRadius: BorderRadius.circular(30),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(6),
+              child: Icon(Icons.arrow_back, color: Colors.blue),
+            ),
+          ),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.book, size: 20, color: Colors.white),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                widget.materiJudul,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white, // ✅ teks jadi putih
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+          ],
+        ),
       ),
       bottomNavigationBar: EmptyBottomBar(),
       body: isLoading
@@ -105,7 +145,7 @@ class _MateriDetailPageState extends State<MateriDetailPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Image.asset(
-                        'assets/dbsiswa.png',
+                        'assets/katolik.png',
                         width: double.infinity,
                         height: 200,
                         fit: BoxFit.cover,

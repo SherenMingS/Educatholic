@@ -165,7 +165,7 @@ class _ProfileGuruPageState extends State<ProfileGuruPage> {
               radius: 50,
               backgroundImage: profileData?['photo'] != null
                   ? NetworkImage(
-                      'http://192.168.1.7:8000/${profileData!['photo']}?v=${DateTime.now().millisecondsSinceEpoch}')
+                      '${ApiService.modulUrl}/${profileData!['photo']}?v=${DateTime.now().millisecondsSinceEpoch}')
                   : null,
               backgroundColor: Colors.blue,
               child: profileData?['photo'] == null
@@ -263,7 +263,10 @@ class _ProfileGuruPageState extends State<ProfileGuruPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Profil Guru"),
+        title: const Text(
+          "Profil Guru",
+          style: TextStyle(color: Colors.white), // 🔥 Teks jadi putih
+        ),
         backgroundColor: Colors.blue,
         centerTitle: true,
       ),

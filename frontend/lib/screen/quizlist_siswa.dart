@@ -43,7 +43,8 @@ class _StudentQuizListPageState extends State<StudentQuizListPage> {
 
   Future<void> _fetchQuizzes(String kelas) async {
     try {
-      final quizzesList = await ApiService.getQuizzesForStudents(token!, kelas, semester: selectedSemester);
+      final quizzesList = await ApiService.getQuizzesForStudents(token!, kelas,
+          semester: selectedSemester);
       final retryMap = <int, bool>{};
 
       for (var quiz in quizzesList) {
@@ -117,12 +118,14 @@ class _StudentQuizListPageState extends State<StudentQuizListPage> {
                   padding: const EdgeInsets.all(16.0),
                   child: Row(
                     children: [
-                      Text("Semester:", style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text("Semester:",
+                          style: TextStyle(fontWeight: FontWeight.bold)),
                       SizedBox(width: 12),
                       DropdownButton<String>(
                         value: selectedSemester,
                         items: ['1', '2'].map((sem) {
-                          return DropdownMenuItem(value: sem, child: Text("Semester $sem"));
+                          return DropdownMenuItem(
+                              value: sem, child: Text("Semester $sem"));
                         }).toList(),
                         onChanged: (val) {
                           setState(() {

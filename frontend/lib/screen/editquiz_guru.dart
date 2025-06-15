@@ -348,16 +348,22 @@ class _EditQuizPageState extends State<EditQuizPage> {
               ),
               SizedBox(height: 12),
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 value: selectedMateriId,
                 decoration: InputDecoration(
                   labelText: "Pilih Materi",
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 items: materiList.map((materi) {
                   return DropdownMenuItem(
                     value: materi['id'].toString(),
-                    child: Text(materi['judul']),
+                    child: Text(
+                      materi['judul'],
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   );
                 }).toList(),
                 onChanged: (val) => setState(() => selectedMateriId = val),

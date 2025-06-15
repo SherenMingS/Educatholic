@@ -8,10 +8,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiService {
   // Ganti dengan URL backend-mu
   static const String baseUrl = 'http://192.168.1.7:8000/api';
+  // static const String baseUrl = 'http://192.168.1.20:8000/api';
   // static const String baseUrl = 'http://192.168.15.173:8000/api';
   // static const String baseUrl = 'http://127.0.0.1:8000/api';
 
   static const String modulUrl = 'http://192.168.1.7:8000';
+  // static const String modulUrl = 'http://192.168.1.20:8000';
   // static const String modulUrl = 'http://127.0.0.1:8000';
 
   static Future<List<Student>> getStudents(String kelas, String token) async {
